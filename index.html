@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>개인 캐릭터 위키</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- 구글 파이어베이스 연동 스크립트 -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <style>
+        .btn-primary { background-color: #0d9488; color: white; padding: 0.5rem 1rem; border-radius: 0.25rem; font-weight: 500; transition: background 0.2s; }
+        .btn-primary:hover { background-color: #0f766e; }
+        .btn-secondary { background-color: #e5e7eb; color: #374151; padding: 0.5rem 1rem; border-radius: 0.25rem; font-weight: 500; transition: background 0.2s; }
+        .btn-secondary:hover { background-color: #d1d5db; }
+        .wiki-content { font-size: 1rem; line-height: 1.6; word-break: break-word; padding-bottom: 8rem; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans">
+    
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        class ErrorBoundary extends React.Component {
+            constructor(props) { super(props); this.state = { hasError: false, errorInfo: null }; }
+            static getDerivedStateFromError(error) { return { hasError: true, errorInfo: error }; }
+            render() {
+                if (this.state.hasError) {
+                    return (
+                        <div className="p-6 max-w-2xl mx-auto mt-10 bg-red-50 border-2 border-red-500 rounded-lg">
+                            <h2 className="text-2xl font-bold text-red-700 mb-2">앗! 오류가 발생했습니다. 😭</h2>
+                            <pre className="bg-white p-3 rounded text-sm text-gray-800 overflow-x-auto border">{this.state.errorInfo?.toString()}</pre>
+                            <button className="mt-6 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-bold" onClick={() => window.location.reload()}>새로고침</button>
+                        </div>
+                    );
+                }
+                return this.props.children;
+            }
+        }
+
+        // 🔑 👇 1단계에서 발급받은 파이어베이스 열쇠들을 아래에 덮어쓰세요! 👇
+        const firebaseConfig = {
+            apiKey: "AIzaSyBm1CHt21qkAunGpVaVsjfH7gqX_YdEOuc",
+            authDomain: "wiki-e77fe.firebaseapp.com",
+            databaseURL: "https://wiki-e77fe-default-rtdb.firebaseio.com",
+            projectId: "wiki-e77fe",
+            storageBucket: "wiki-e77fe.firebasestorage.app",
+            messagingSenderId: "533713718953",
+            appId: "1:533713718953:web:0a09fc323c5b1b527c23b8"
+        };
+
+        const isFirebaseConfigured = firebaseConfig.apiKey && !firebaseConfig.apiKey.includes("여기에");
+
+        if (isFirebaseConfigured && !firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+
+        // --- (아이콘 컴포넌트 생략 - 기존과 동일) ---
+        const IconSearch = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>;
+        const IconEdit = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>;
+        const IconTrash = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>;
+        const IconPlus = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
+        const IconSave = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>;
+        const IconX = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
+        const IconHelp = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>;
+        const IconDownload = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>;
+        const IconUpload = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>;
+        const IconImage = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>;
+
+        const INITIAL_DATA = {
+            "home": {
+                id: "home",
+                title: "대문",
+                isSystem: true,
+                content: "== 환영합니다! ==\n이곳은 개인 캐릭터 설정을 정리하는 위키입니다.\n\n우측 상단의 검색창이나 아래 목록을 통해 문서를 열람할 수 있습니다.\n문서를 수정하려면 우측 상단의 펜 아이콘을 클릭하고 비밀번호(0201)를 입력하세요.\n\n== 캐릭터 목록 ==\n[[char1|알렉스 머서]]\n[[char2|베아트리스]]"
+            }
+        };
+
+        const DEFAULT_DOC_TEMPLATE = "== 개요 ==\n여기에 개요를 작성하세요.\n\n== 상세 ==\n상세 내용을 작성하세요.\n\n== 작중 행적 ==\n[접기:행적 보기]\n[스포일러경고]\n행적을 작성하세요.\n[/접기]";
+
+        function PersonalWikiApp() {
+            const [db, setDb] = useState(INITIAL_DATA);
+            const [currentDocId, setCurrentDocId] = useState('home');
+            const [isEditing, setIsEditing] = useState(false);
+            const [searchQuery, setSearchQuery] = useState('');
+            const [showSearchRecs, setShowSearchRecs] = useState(false);
+            const [isLoading, setIsLoading] = useState(true);
+            const searchRef = useRef(null);
+            const [editData, setEditData] = useState(null);
+
+            // 🌟 파이어베이스 실시간 연동 (친구가 접속해 있어도 화면이 실시간 갱신됨!)
+            useEffect(() => {
+                if (!isFirebaseConfigured) {
+                    const saved = localStorage.getItem('personalWikiDB');
+                    if (saved) { try { setDb(JSON.parse(saved)); } catch (e) {} }
+                    setIsLoading(false);
+                    return;
+                }
+
+                const dbRef = firebase.database().ref('wikiDB');
+                const listener = dbRef.on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data && data.home) {
+                        setDb(data);
+                    } else if (!data) {
+                        setDb(INITIAL_DATA); // 아예 비어있으면 초기 데이터 세팅
+                    }
+                    setIsLoading(false);
+                });
+
+                return () => dbRef.off('value', listener);
+            }, []);
+
+            useEffect(() => {
+                const handleHashChange = () => {
+                    const hashId = window.location.hash.replace('#', '') || 'home';
+                    setCurrentDocId(hashId);
+                    setIsEditing(false);
+                    setShowSearchRecs(false);
+                    window.scrollTo(0,0);
+                };
+                window.addEventListener('hashchange', handleHashChange);
+                // 첫 로딩 시 해시 반영
+                handleHashChange();
+                return () => window.removeEventListener('hashchange', handleHashChange);
+            }, []);
+
+            useEffect(() => {
+                const handleClickOutside = (event) => {
+                    if (searchRef.current && !searchRef.current.contains(event.target)) {
+                        setShowSearchRecs(false);
+                    }
+                };
+                document.addEventListener("mousedown", handleClickOutside);
+                return () => document.removeEventListener("mousedown", handleClickOutside);
+            }, []);
+
+            const navigateTo = (id) => {
+                if (db[id] || id === 'home') window.location.hash = id; 
+                else alert("존재하지 않는 문서입니다.");
+            };
+
+            const handleSaveData = (newDb) => {
+                setDb(newDb);
+                if (!isFirebaseConfigured) {
+                    localStorage.setItem('personalWikiDB', JSON.stringify(newDb));
+                } else {
+                    firebase.database().ref('wikiDB').set(newDb)
+                        .catch(() => alert("구글 서버 저장 중 오류가 발생했습니다."));
+                }
+            };
+
+            const currentDoc = db[currentDocId] || db['home'] || INITIAL_DATA['home'];
+
+            const startEditing = () => {
+                const pass = prompt("문서를 편집하려면 비밀번호를 입력하세요.");
+                if (pass !== '0201') { alert("비밀번호가 틀렸습니다."); return; }
+                setEditData({ ...currentDoc, attributes: currentDoc.attributes ? [...currentDoc.attributes] : [] });
+                setIsEditing(true);
+            };
+
+            const createNewDoc = () => {
+                const pass = prompt("새 문서를 생성하려면 비밀번호를 입력하세요.");
+                if (pass !== '0201') return;
+                
+                const newId = `doc_${Date.now()}`;
+                const newDoc = {
+                    id: newId, title: "새 문서", subtitle: "", profileColor: "#475569", spoilerColor: "#0f766e", quoteColor: "#374151", engName: "New Character", image: "",
+                    attributes: [{ label: "정보", value: "내용" }], content: DEFAULT_DOC_TEMPLATE
+                };
+                const newDb = { ...db, [newId]: newDoc };
+                handleSaveData(newDb);
+                window.location.hash = newId; 
+                setEditData(newDoc);
+                setIsEditing(true);
+            };
+
+            const deleteDoc = () => {
+                if (currentDoc.isSystem) { alert("대문은 삭제할 수 없습니다."); return; }
+                const pass = prompt("정말 이 문서를 삭제하시겠습니까? 비밀번호를 입력하세요.");
+                if (pass === '0201') {
+                    const newDb = { ...db };
+                    delete newDb[currentDocId];
+                    handleSaveData(newDb);
+                    window.location.hash = 'home';
+                }
+            };
+
+            const exportData = () => {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db));
+                const dlAnchorElem = document.createElement('a');
+                dlAnchorElem.setAttribute("href", dataStr);
+                dlAnchorElem.setAttribute("download", "wiki_backup.json");
+                dlAnchorElem.click();
+            };
+
+            const importData = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const imported = JSON.parse(event.target.result);
+                        if (imported && imported.home) {
+                            handleSaveData(imported);
+                            window.location.hash = 'home';
+                            alert("구글 서버로 데이터가 완벽하게 복구(업로드) 되었습니다!");
+                        } else alert("올바르지 않은 데이터 형식입니다.");
+                    } catch (err) { alert("파일을 읽는 중 오류가 발생했습니다."); }
+                };
+                reader.readAsText(file);
+            };
+
+            if (isLoading) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                        <div className="text-xl font-bold text-teal-700 animate-pulse">📚 클라우드 위키 불러오는 중...</div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen bg-gray-50 text-gray-800 font-sans pb-10">
+                    <header className="bg-teal-700 text-white shadow-md sticky top-0 z-50">
+                        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+                            <div className="text-xl font-bold cursor-pointer flex items-center gap-2" onClick={() => navigateTo('home')}>
+                                <span className="text-2xl">📚</span>
+                                <span>나만의 위키</span>
+                            </div>
+                            
+                            <div className="flex items-center gap-2 sm:gap-4">
+                                <div className="relative" ref={searchRef}>
+                                    <div className="flex items-center bg-white rounded text-gray-800 px-2 py-1 focus-within:ring-2 ring-teal-400">
+                                        <IconSearch size={16} className="text-gray-400" />
+                                        <input 
+                                            type="text" placeholder="문서 검색..." 
+                                            className="bg-transparent outline-none ml-2 w-24 sm:w-48 text-sm"
+                                            value={searchQuery}
+                                            onChange={(e) => { setSearchQuery(e.target.value); setShowSearchRecs(true); }}
+                                            onFocus={() => setShowSearchRecs(true)}
+                                        />
+                                    </div>
+                                    {showSearchRecs && searchQuery && (
+                                        <div className="absolute top-full right-0 mt-1 w-48 sm:w-full bg-white text-gray-800 shadow-lg rounded border border-gray-200 max-h-60 overflow-y-auto z-50">
+                                            {Object.values(db)
+                                                .filter(doc => {
+                                                    const fullTitle = doc.subtitle ? `${doc.title} (${doc.subtitle})` : (doc.title || "");
+                                                    return fullTitle.toLowerCase().includes(searchQuery.toLowerCase());
+                                                })
+                                                .map(doc => (
+                                                    <div key={doc.id} className="px-3 py-2 hover:bg-teal-50 cursor-pointer text-sm border-b last:border-0 flex justify-between items-center" onClick={() => navigateTo(doc.id)}>
+                                                        <span className="font-bold">{doc.title}</span>
+                                                        {doc.subtitle && <span className="text-gray-500 text-xs shrink-0 ml-2">({doc.subtitle})</span>}
+                                                    </div>
+                                                ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex gap-1">
+                                    <button onClick={createNewDoc} title="새 문서" className="p-1 sm:p-1.5 hover:bg-teal-600 rounded"><IconPlus size={18} /></button>
+                                    {!isEditing && <button onClick={startEditing} title="편집" className="p-1 sm:p-1.5 hover:bg-teal-600 rounded"><IconEdit size={18} /></button>}
+                                    <button onClick={exportData} title="백업" className="p-1 sm:p-1.5 hover:bg-teal-600 rounded"><IconDownload size={18} /></button>
+                                    <label className="p-1 sm:p-1.5 hover:bg-teal-600 rounded cursor-pointer" title="복구">
+                                        <IconUpload size={18} />
+                                        <input type="file" accept=".json" className="hidden" onChange={importData} />
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="max-w-6xl mx-auto p-4 md:p-6 lg:p-8 bg-white min-h-[calc(100vh-3.5rem)] shadow-sm">
+                        {isEditing ? (
+                            <EditorView 
+                                editData={editData} setEditData={setEditData} 
+                                onSave={(newData) => {
+                                    const newDb = { ...db, [newData.id]: newData };
+                                    handleSaveData(newDb);
+                                    setIsEditing(false);
+                                }}
+                                onCancel={() => {
+                                    setIsEditing(false);
+                                    if (currentDocId === editData.id && !db[currentDocId]) window.location.hash = 'home';
+                                }}
+                            />
+                        ) : (
+                            <DocumentView doc={currentDoc} navigateTo={navigateTo} onDelete={deleteDoc} />
+                        )}
+                    </main>
+                </div>
+            );
+        }
+
+        function DocumentView({ doc, navigateTo, onDelete }) {
+            const docColors = {
+                spoilerColor: doc.spoilerColor || '#0f766e',
+                quoteColor: doc.quoteColor || '#374151'
+            };
+
+            const globalFootnotes = [];
+            const extractFn = (text) => {
+                if (!text) return "";
+                return text.replace(/\[\*\s*([\s\S]*?)\]/g, (match, fnContent) => {
+                    globalFootnotes.push(fnContent.replace(/\n/g, '__BR__'));
+                    return `__FOOTNOTE_${globalFootnotes.length - 1}__`;
+                });
+            };
+
+            const parsedEngName = extractFn(doc.engName);
+            const parsedAttributes = (doc.attributes || []).map(attr => ({
+                label: extractFn(attr.label),
+                value: extractFn(attr.value)
+            }));
+            
+            let parsedContent = extractFn(doc.content);
+            parsedContent = parsedContent.replace(/\{\{([\s\S]*?)\}\}/g, (match, inner) => {
+                if (inner.startsWith('스포일러:') || inner.startsWith('숨김:')) {
+                    return `{{${inner.replace(/\n/g, '__BR__')}}}`;
+                }
+                return match;
+            });
+
+            const headings = [];
+            let isFolding = false;
+            let mainCount = 0;
+            let subCount = 0;
+            let globalIndex = 0;
+            
+            parsedContent.split('\n').forEach((line) => {
+                const rawLine = line.trim();
+                if (rawLine.match(/^\[접기:(.+?)\]$/)) isFolding = true;
+                if (rawLine === '[\/접기]') isFolding = false;
+                
+                if (!isFolding) {
+                    const match = rawLine.match(/^(==+)\s+(.+?)\s+\1$/);
+                    if (match && match[1].length <= 3) {
+                        const level = match[1].length;
+                        let numStr = "";
+                        if (level === 2) { mainCount++; subCount = 0; numStr = `${mainCount}.`; }
+                        else if (level === 3) { subCount++; numStr = `${mainCount}.${subCount}.`; }
+                        
+                        headings.push({ level, title: match[2], numStr, id: `heading-${globalIndex}` });
+                        globalIndex++;
+                    }
+                }
+            });
+
+            return (
+                <div className="relative">
+                    <div className="flex justify-between items-end border-b-2 border-gray-300 pb-2 mb-6">
+                        <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">{doc.title}</h1>
+                        {!doc.isSystem && (
+                            <button onClick={onDelete} className="text-red-500 hover:text-red-700 text-sm flex items-center gap-1">
+                                <IconTrash size={16} /> 삭제
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="flex flex-col lg:flex-row gap-6 relative">
+                        <div className="flex-1 order-2 lg:order-1 content-wrapper">
+                            {!doc.isSystem && (
+                                <div className="float-none lg:float-right ml-0 lg:ml-6 mb-6 w-full lg:w-72 border border-gray-300 bg-white shadow-sm overflow-hidden z-10 relative">
+                                    <div className="text-center p-3 text-white border-b border-gray-300" style={{ backgroundColor: doc.profileColor || '#0284c7' }}>
+                                        <div className="font-bold text-xl">{doc.title}</div>
+                                        {doc.engName && (
+                                            <div className="text-xs opacity-90 mt-0.5">
+                                                <InlineParser text={parsedEngName} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="w-full bg-gray-100 flex items-center justify-center border-b border-gray-300 overflow-hidden">
+                                        {doc.image ? (
+                                            <img src={doc.image} alt={doc.title} className="w-full h-auto object-contain" />
+                                        ) : (
+                                            <div className="text-gray-400 flex flex-col items-center py-12">
+                                                <IconImage size={32} className="mb-2" />
+                                                <span className="text-sm font-medium">추가예정</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {parsedAttributes.length > 0 && (
+                                        <table className="w-full text-sm">
+                                            <tbody>
+                                                {parsedAttributes.map((attr, idx) => (
+                                                    <tr key={idx} className="border-b border-gray-200 last:border-0">
+                                                        <th className="w-1/3 p-2 border-r border-gray-200 text-white font-medium text-center align-middle" style={{ backgroundColor: doc.profileColor || '#0284c7' }}>
+                                                            <InlineParser text={attr.label} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} />
+                                                        </th>
+                                                        <td className="p-2 text-center align-middle bg-white break-keep">
+                                                            <InlineParser text={attr.value} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} />
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    )}
+                                </div>
+                            )}
+
+                            {headings.length > 0 ? (
+                                <div className="border border-gray-300 p-4 mb-6 inline-block min-w-[200px] bg-gray-50 clear-left lg:clear-none w-full sm:w-auto">
+                                    <div className="font-bold mb-2 text-lg">목차</div>
+                                    <ul className="list-none pl-1 space-y-1 text-sm text-blue-700">
+                                        {headings.map((h, i) => (
+                                            <li key={i} className={h.level === 3 ? "ml-4" : ""}>
+                                                <a 
+                                                    href={`#${h.id}`} 
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        document.getElementById(h.id)?.scrollIntoView({ behavior: 'smooth' });
+                                                    }}
+                                                    className="hover:underline flex gap-2"
+                                                >
+                                                    <span className="font-bold shrink-0">{h.numStr}</span>
+                                                    <span>{h.title}</span>
+                                                </a>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            ) : null}
+                            
+                            <div className="wiki-content">
+                                <WikiRenderer content={parsedContent} navigateTo={navigateTo} globalFootnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function SectionBlock({ section, navigateTo, footnotes, contentImages, docColors }) {
+            const [isOpen, setIsOpen] = useState(true);
+            if (!section.heading) {
+                return (
+                    <div>
+                        {renderLines(section.lines, navigateTo, footnotes, contentImages, docColors)}
+                        {section.subSections.map((sub, idx) => (
+                            <SubSectionBlock key={idx} subSection={sub} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} />
+                        ))}
+                    </div>
+                );
+            }
+            return (
+                <div className="mb-8 clear-left">
+                    <div 
+                        className="flex items-center border-b-2 border-gray-300 pb-1 mt-8 mb-4 cursor-pointer hover:bg-gray-50 transition-colors select-none group scroll-mt-20"
+                        onClick={() => setIsOpen(!isOpen)}
+                        title={isOpen ? "클릭하여 단락 접기" : "클릭하여 단락 펼치기"}
+                        id={section.id}
+                    >
+                        <span className="text-teal-800 mr-2 text-lg transition-transform duration-200 inline-block" style={{ transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}>▼</span>
+                        <h2 className="text-xl sm:text-2xl font-bold text-teal-800">{section.numStr} {section.heading}</h2>
+                    </div>
+                    <div style={{ display: isOpen ? 'block' : 'none' }}>
+                        <div className="pl-1 sm:pl-2">
+                            {renderLines(section.lines, navigateTo, footnotes, contentImages, docColors)}
+                            {section.subSections.map((sub, idx) => (
+                                <SubSectionBlock key={idx} subSection={sub} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} />
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function SubSectionBlock({ subSection, navigateTo, footnotes, contentImages, docColors }) {
+            const [isOpen, setIsOpen] = useState(true);
+            return (
+                <div className="mb-4 mt-6">
+                    <div 
+                        className="flex items-center border-b border-gray-200 pb-1 mb-3 cursor-pointer hover:bg-gray-50 transition-colors select-none group scroll-mt-20"
+                        onClick={() => setIsOpen(!isOpen)}
+                        title={isOpen ? "클릭하여 단락 접기" : "클릭하여 단락 펼치기"}
+                        id={subSection.id}
+                    >
+                        <span className="text-teal-700 mr-2 text-base transition-transform duration-200 inline-block" style={{ transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}>▼</span>
+                        <h3 className="text-lg sm:text-xl font-bold text-teal-700">{subSection.numStr} {subSection.heading}</h3>
+                    </div>
+                    <div style={{ display: isOpen ? 'block' : 'none' }}>
+                        <div className="pl-1 sm:pl-2">
+                            {renderLines(subSection.lines, navigateTo, footnotes, contentImages, docColors)}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function CollapsibleBlock({ title, content, navigateTo, contentImages, docColors }) {
+            const [isOpen, setIsOpen] = useState(false);
+            return (
+                <div className="border border-gray-300 rounded my-3 overflow-hidden">
+                    <button 
+                        onClick={() => setIsOpen(!isOpen)} 
+                        className="w-full text-left bg-gray-100 hover:bg-gray-200 px-3 py-2 font-bold text-sm flex justify-between items-center outline-none"
+                    >
+                        <span>{isOpen ? '▼' : '▶'} {title}</span>
+                        <span className="text-xs text-gray-500">{isOpen ? "[접기]" : "[펼치기]"}</span>
+                    </button>
+                    {isOpen && (
+                        <div className="p-3 bg-white border-t border-gray-200">
+                            {renderLines(content.split('\n'), navigateTo, [], contentImages, docColors)}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function renderLines(lines, navigateTo, footnotes, contentImages, docColors) {
+            const elements = [];
+            let isFolding = false;
+            let foldTitle = "";
+            let foldLines = [];
+
+            for (let i = 0; i < lines.length; i++) {
+                const rawLine = lines[i];
+                const line = rawLine.trim();
+
+                const foldStartMatch = line.match(/^\[접기:(.+?)\]$/);
+                if (foldStartMatch) {
+                    isFolding = true;
+                    foldTitle = foldStartMatch[1];
+                    foldLines = [];
+                    continue;
+                }
+
+                if (line === '[\/접기]') {
+                    isFolding = false;
+                    elements.push(
+                        <CollapsibleBlock key={`fold-${i}`} title={foldTitle} content={foldLines.join('\n')} navigateTo={navigateTo} contentImages={contentImages} docColors={docColors} />
+                    );
+                    continue;
+                }
+
+                if (isFolding) {
+                    foldLines.push(rawLine);
+                    continue;
+                }
+
+                if (line === '') { elements.push(<br key={`br-${i}`} />); continue; }
+
+                if (line.startsWith('> ')) {
+                    const quoteText = line.slice(2);
+                    elements.push(
+                        <blockquote 
+                            key={`quote-${i}`} 
+                            className="border-l-4 pl-4 py-2 my-2 bg-gray-50 italic rounded-r break-words"
+                            style={{ borderLeftColor: docColors.quoteColor, color: docColors.quoteColor }}
+                        >
+                            <InlineParser text={quoteText} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} />
+                        </blockquote>
+                    );
+                    continue;
+                }
+
+                if (line === '[스포일러경고]') {
+                    elements.push(
+                        <div key={`warn-${i}`} className="bg-red-50 border-l-4 border-red-500 p-3 sm:p-4 my-4 rounded-r">
+                            <p className="text-red-700 font-bold flex items-center gap-2"><span className="text-lg sm:text-xl">⚠️</span> 주의사항</p>
+                            <p className="text-red-600 text-xs sm:text-sm mt-1">이 문서 하단에는 치명적인 스포일러가 포함되어 있습니다.</p>
+                        </div>
+                    );
+                    continue;
+                }
+
+                const ytMatch = line.match(/^\[유튜브:([a-zA-Z0-9_-]+)\]$/);
+                if (ytMatch) {
+                    elements.push(
+                        <div key={`yt-${i}`} className="my-4 aspect-video max-w-2xl w-full">
+                            <iframe width="100%" height="100%" src={`https://www.youtube.com/embed/${ytMatch[1]}`} frameBorder="0" allowFullScreen></iframe>
+                        </div>
+                    );
+                    continue;
+                }
+
+                elements.push(
+                    <p key={`p-${i}`} className="mb-2 relative break-words">
+                        <InlineParser text={line} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} />
+                    </p>
+                );
+            }
+
+            if (isFolding) elements.push(<CollapsibleBlock key={`fold-end`} title={foldTitle} content={foldLines.join('\n')} navigateTo={navigateTo} contentImages={contentImages} docColors={docColors} />);
+            return elements;
+        }
+
+        function WikiRenderer({ content, navigateTo, globalFootnotes = [], contentImages = [], docColors }) {
+            const sections = [];
+            let currentH2 = { heading: null, numStr: "", id: "", lines: [], subSections: [] };
+            let currentH3 = null;
+            
+            const rawLines = (content || "").split('\n');
+            let isFolding = false;
+            let mainCount = 0;
+            let subCount = 0;
+            let globalIndex = 0;
+            
+            for (let i = 0; i < rawLines.length; i++) {
+                const line = rawLines[i].trim();
+                const foldStartMatch = line.match(/^\[접기:(.+?)\]$/);
+                
+                if (foldStartMatch) isFolding = true;
+                if (line === '[\/접기]') isFolding = false;
+                
+                const headingMatch = !isFolding ? line.match(/^(==+)\s+(.+?)\s+\1$/) : null;
+                
+                if (headingMatch && headingMatch[1].length === 2) {
+                    if (currentH2.heading || currentH2.lines.length > 0 || currentH2.subSections.length > 0) {
+                        sections.push(currentH2);
+                    }
+                    mainCount++;
+                    subCount = 0;
+                    currentH2 = { 
+                        heading: headingMatch[2], 
+                        numStr: `${mainCount}.`, 
+                        id: `heading-${globalIndex++}`, 
+                        lines: [], 
+                        subSections: [] 
+                    };
+                    currentH3 = null;
+                } else if (headingMatch && headingMatch[1].length === 3) {
+                    subCount++;
+                    currentH3 = {
+                        heading: headingMatch[2],
+                        numStr: `${mainCount}.${subCount}.`,
+                        id: `heading-${globalIndex++}`,
+                        lines: []
+                    };
+                    currentH2.subSections.push(currentH3);
+                } else {
+                    if (currentH3) currentH3.lines.push(rawLines[i]);
+                    else currentH2.lines.push(rawLines[i]);
+                }
+            }
+            sections.push(currentH2);
+
+            return (
+                <div>
+                    {sections.map((sec, idx) => (
+                        <SectionBlock key={idx} section={sec} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={contentImages} docColors={docColors} />
+                    ))}
+                    
+                    {globalFootnotes.length > 0 ? (
+                        <div className="mt-12 pt-4 border-t-2 border-gray-200">
+                            <h3 className="font-bold text-lg mb-2">주석</h3>
+                            <ul className="text-sm space-y-2">
+                                {globalFootnotes.map((fn, idx) => (
+                                    <li key={idx} id={`fn-bottom-${idx}`} className="flex gap-2 items-start mt-1">
+                                        <a href={`#fn-text-${idx}`} className="text-blue-600 font-bold hover:underline shrink-0" onClick={(e) => {
+                                            e.preventDefault();
+                                            document.getElementById(`fn-text-${idx}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                        }}>
+                                            [{idx + 1}]
+                                        </a>
+                                        <span><InlineParser text={fn} navigateTo={navigateTo} footnotes={globalFootnotes} isInsideFootnote={true} contentImages={contentImages} docColors={docColors} /></span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    ) : null}
+                </div>
+            );
+        }
+
+        function InlineParser({ text, navigateTo, footnotes, isInsideFootnote = false, contentImages = [], docColors }) {
+            if (!text) return null;
+            const regex = /(\[\[.*?\]\]|\{\{숨김:.*?\|.*?\}\}|\{\{스포일러:.*?\}\}|__FOOTNOTE_\d+__|\[본문사진:\d+\]|'''.*?'''|\*\*.*?\*\*|~~.*?~~|''.*?''|__BR__)/g;
+            const parts = text.split(regex);
+
+            return (
+                <>
+                    {parts.map((part, i) => {
+                        if (!part) return null;
+                        
+                        if (part === '__BR__') return <br key={i} />;
+                        
+                        if (part.startsWith('[[') && part.endsWith(']]')) {
+                            const inner = part.slice(2, -2);
+                            const [target, display] = inner.split('|');
+                            return (
+                                <a key={i} href={`#${target}`} onClick={(e) => { e.preventDefault(); navigateTo(target); }} className="text-blue-600 hover:underline font-medium">
+                                    <InlineParser text={display || target} navigateTo={navigateTo} footnotes={footnotes} isInsideFootnote={isInsideFootnote} contentImages={contentImages} docColors={docColors} />
+                                </a>
+                            );
+                        }
+                        
+                        if (part.startsWith('{{숨김:') && part.endsWith('}}')) {
+                            const inner = part.slice(5, -2);
+                            const splitIndex = inner.indexOf('|');
+                            if (splitIndex !== -1) {
+                                const placeholder = inner.slice(0, splitIndex);
+                                const content = inner.slice(splitIndex + 1);
+                                return <SpoilerToggle key={i} placeholder={placeholder} content={content} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} />;
+                            }
+                        }
+
+                        if (part.startsWith('{{스포일러:') && part.endsWith('}}')) {
+                            const content = part.slice(7, -2);
+                            return <SpoilerToggle key={i} placeholder="스포일러 주의" content={content} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} />;
+                        }
+                        
+                        if (part.startsWith('[본문사진:') && part.endsWith(']')) {
+                            const imgIdx = parseInt(part.slice(6, -1), 10);
+                            if (contentImages[imgIdx]) {
+                                return <img key={i} src={contentImages[imgIdx]} alt={`본문 첨부 이미지 ${imgIdx}`} className="max-w-full h-auto rounded my-2 border border-gray-200 block" />;
+                            }
+                            return null;
+                        }
+
+                        const fnMatch = part.match(/__FOOTNOTE_(\d+)__/);
+                        if (fnMatch) {
+                            const fnIndex = parseInt(fnMatch[1], 10);
+                            return <FootnotePopup key={i} index={fnIndex} content={footnotes[fnIndex]} navigateTo={navigateTo} contentImages={contentImages} docColors={docColors} />;
+                        }
+                        
+                        if ((part.startsWith("'''") && part.endsWith("'''")) || (part.startsWith("**") && part.endsWith("**"))) {
+                            const content = part.startsWith("'''") ? part.slice(3, -3) : part.slice(2, -2);
+                            return (
+                                <strong key={i} className="font-bold">
+                                    <InlineParser text={content} navigateTo={navigateTo} footnotes={footnotes} isInsideFootnote={isInsideFootnote} contentImages={contentImages} docColors={docColors} />
+                                </strong>
+                            );
+                        }
+                        
+                        if (part.startsWith("~~") && part.endsWith("~~")) {
+                            const content = part.slice(2, -2);
+                            return (
+                                <del key={i} className="line-through text-gray-500">
+                                    <InlineParser text={content} navigateTo={navigateTo} footnotes={footnotes} isInsideFootnote={isInsideFootnote} contentImages={contentImages} docColors={docColors} />
+                                </del>
+                            );
+                        }
+                        
+                        if (part.startsWith("''") && part.endsWith("''")) {
+                            const content = part.slice(2, -2);
+                            return (
+                                <em key={i} className="italic">
+                                    <InlineParser text={content} navigateTo={navigateTo} footnotes={footnotes} isInsideFootnote={isInsideFootnote} contentImages={contentImages} docColors={docColors} />
+                                </em>
+                            );
+                        }
+                        
+                        return <span key={i}>{part}</span>;
+                    })}
+                </>
+            );
+        }
+
+        function SpoilerToggle({ placeholder, content, navigateTo, footnotes, contentImages, docColors }) {
+            const [isOpen, setIsOpen] = useState(false);
+            
+            if (isOpen) {
+                return (
+                    <span className="mx-1 leading-relaxed">
+                        <span 
+                            className="cursor-pointer text-xs font-bold text-gray-100 bg-gray-400 hover:bg-gray-500 mr-1 px-1.5 py-0.5 rounded shadow-sm align-middle" 
+                            onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}
+                            title="클릭하여 다시 숨기기"
+                        >
+                            접기
+                        </span>
+                        <span style={{ color: docColors.spoilerColor }}>
+                            <InlineParser text={content} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} />
+                        </span>
+                    </span>
+                );
+            }
+
+            return (
+                <span 
+                    className="cursor-pointer font-bold select-none border-b border-dashed hover:opacity-70 mx-1 transition-opacity" 
+                    style={{ color: docColors.spoilerColor, borderBottomColor: docColors.spoilerColor }}
+                    onClick={(e) => { e.stopPropagation(); setIsOpen(true); }}
+                    title="클릭하여 보기"
+                >
+                    {placeholder}
+                </span>
+            );
+        }
+
+        function FootnotePopup({ index, content, navigateTo, contentImages, docColors }) {
+            const [show, setShow] = useState(false);
+            const popupRef = useRef(null);
+
+            useEffect(() => {
+                const handleClick = (e) => { if (popupRef.current && !popupRef.current.contains(e.target)) setShow(false); };
+                if (show) document.addEventListener('mousedown', handleClick);
+                return () => document.removeEventListener('mousedown', handleClick);
+            }, [show]);
+
+            return (
+                <span className="relative inline-block scroll-mt-24" ref={popupRef} id={`fn-text-${index}`}>
+                    <a href={`#fn-bottom-${index}`} className="text-blue-600 text-xs align-super cursor-pointer hover:underline mx-0.5" onClick={(e) => { e.preventDefault(); setShow(!show); }}>
+                        [{index + 1}]
+                    </a>
+                    
+                    {show && <div className="fixed inset-0 bg-black/20 z-[90] sm:hidden" onClick={() => setShow(false)}></div>}
+                    
+                    {show && (
+                        <div className="fixed sm:absolute z-[100] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 sm:top-auto sm:translate-y-0 sm:bottom-full sm:left-1/2 sm:-translate-x-1/2 sm:mb-2 w-[90vw] max-w-sm sm:w-64 p-4 sm:p-3 bg-white border border-gray-300 shadow-2xl rounded-lg sm:rounded text-sm text-gray-800 break-words">
+                            <div className="hidden sm:block absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-white border-b border-r border-gray-300 rotate-45"></div>
+                            
+                            <div className="pr-6 max-h-[60vh] overflow-y-auto">
+                                <InlineParser text={content} navigateTo={navigateTo} footnotes={[]} isInsideFootnote={true} contentImages={contentImages} docColors={docColors} />
+                            </div>
+                            
+                            <button className="absolute top-2 right-2 sm:top-1.5 sm:right-1.5 text-gray-400 hover:text-gray-600 bg-gray-100 sm:bg-transparent rounded-full p-1" onClick={() => setShow(false)}><IconX size={14} /></button>
+                        </div>
+                    )}
+                </span>
+            );
+        }
+
+        function EditorView({ editData, setEditData, onSave, onCancel }) {
+            const [showHelp, setShowHelp] = useState(false);
+            const handleChange = (field, value) => setEditData(prev => ({ ...prev, [field]: value }));
+            const handleAttributeChange = (index, field, value) => {
+                const newAttrs = [...(editData.attributes || [])];
+                newAttrs[index][field] = value;
+                handleChange('attributes', newAttrs);
+            };
+            const addAttribute = () => handleChange('attributes', [...(editData.attributes || []), { label: "", value: "" }]);
+            const removeAttribute = (index) => handleChange('attributes', (editData.attributes || []).filter((_, i) => i !== index));
+
+            const handleImageUpload = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => handleChange('image', reader.result);
+                    reader.readAsDataURL(file);
+                }
+            };
+            
+            const handleContentImageUpload = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        const currentImages = editData.contentImages || [];
+                        const newImages = [...currentImages, reader.result];
+                        handleChange('contentImages', newImages);
+                        handleChange('content', (editData.content || "") + `\n[본문사진:${newImages.length - 1}]\n`);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            return (
+                <div className="flex flex-col gap-4 relative">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-2">
+                        <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2"><IconEdit className="text-teal-600" /> 문서 편집</h2>
+                        <div className="flex gap-2 w-full sm:w-auto justify-end">
+                            <button onClick={() => setShowHelp(!showHelp)} className="btn-secondary flex items-center gap-1 text-sm"><IconHelp size={16} /> 도움말</button>
+                            <button onClick={onCancel} className="btn-secondary text-sm">취소</button>
+                            <button onClick={() => onSave(editData)} className="btn-primary flex items-center gap-1 text-sm"><IconSave size={16} /> 저장</button>
+                        </div>
+                    </div>
+
+                    {showHelp && (
+                        <div className="bg-teal-50 border border-teal-200 p-4 rounded text-xs sm:text-sm text-teal-900 mb-2 overflow-x-auto">
+                            <h4 className="font-bold mb-2">문법 도움말</h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <ul className="list-disc pl-5 space-y-1">
+                                    <li><strong>상위 단락:</strong> <code>== 이름 ==</code> (1., 2. 자동부여)</li>
+                                    <li><strong>하위 단락:</strong> <code>=== 이름 ===</code> (1.1, 1.2 자동부여)</li>
+                                    <li><strong>문서 링크:</strong> <code>[[문서ID|이름]]</code></li>
+                                    <li><strong>주석 (플로팅):</strong> <code>[* 주석내용]</code></li>
+                                </ul>
+                                <ul className="list-disc pl-5 space-y-1">
+                                    <li><strong>맞춤 숨김:</strong> <code>{"{{숨김:보여줄글씨|진짜내용}}"}</code></li>
+                                    <li><strong>기본 스포일러:</strong> <code>{"{{스포일러:진짜내용}}"}</code></li>
+                                    <li><strong>서식:</strong> <code>'''굵게'''</code> / <code>''기울임''</code> / <code>~~취소~~</code></li>
+                                    <li><strong>인용구/접기:</strong> <code>&gt; 인용구</code> / <code>[접기:제목]</code> 내용 <code>[/접기]</code></li>
+                                </ul>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="lg:col-span-2 flex flex-col gap-4">
+                            <div>
+                                <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1">문서 ID (영문/숫자 권장, 링크용)</label>
+                                <input type="text" value={editData.id || ""} disabled={(editData.id === 'home' || (editData.id || "").startsWith('char'))} onChange={(e) => handleChange('id', e.target.value)} className="w-full p-2 border rounded bg-gray-100 text-gray-600 text-sm" />
+                            </div>
+                            
+                            <div className="flex gap-2">
+                                <div className="flex-1">
+                                    <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1">문서 제목 (이름)</label>
+                                    <input type="text" value={editData.title || ""} onChange={(e) => handleChange('title', e.target.value)} className="w-full p-2 border rounded focus:ring-2 ring-teal-400 outline-none text-sm" />
+                                </div>
+                                <div className="flex-1">
+                                    <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1">검색 구분 태그 (AU 등)</label>
+                                    <input type="text" placeholder="예: 뱀파이어 AU" value={editData.subtitle || ""} onChange={(e) => handleChange('subtitle', e.target.value)} className="w-full p-2 border rounded focus:ring-2 ring-teal-400 outline-none text-sm" />
+                                </div>
+                            </div>
+
+                            <div className="flex-1 flex flex-col">
+                                <div className="flex justify-between items-center mb-1">
+                                    <label className="block text-xs sm:text-sm font-bold text-gray-700">본문 내용</label>
+                                    <label className="cursor-pointer text-xs bg-teal-100 hover:bg-teal-200 text-teal-800 px-2 py-1 rounded font-bold flex items-center gap-1 shadow-sm transition-colors">
+                                        <IconImage size={14} /> 본문 사진 첨부하기
+                                        <input type="file" accept="image/*" className="hidden" onChange={handleContentImageUpload} />
+                                    </label>
+                                </div>
+                                <textarea value={editData.content || ""} onChange={(e) => handleChange('content', e.target.value)} className="w-full h-80 sm:h-96 p-3 border rounded focus:ring-2 ring-teal-400 outline-none font-mono text-xs sm:text-sm leading-relaxed"></textarea>
+                            </div>
+                        </div>
+
+                        {!editData.isSystem && (
+                            <div className="bg-gray-50 border border-gray-200 p-4 rounded h-fit">
+                                <h3 className="font-bold text-base sm:text-lg mb-4 border-b pb-2">프로필 박스 설정</h3>
+                                <div className="space-y-4">
+                                    
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 border border-gray-200 p-2 rounded bg-white">
+                                        <div>
+                                            <label className="block text-[10px] sm:text-xs font-bold text-gray-700 mb-1">테마 (프로필)</label>
+                                            <div className="flex gap-1">
+                                                <input type="color" value={editData.profileColor || "#475569"} onChange={(e) => handleChange('profileColor', e.target.value)} className="h-7 w-8 cursor-pointer p-0 border-0" />
+                                                <input type="text" value={editData.profileColor || "#475569"} onChange={(e) => handleChange('profileColor', e.target.value)} className="flex-1 p-1 border rounded text-xs" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] sm:text-xs font-bold text-gray-700 mb-1">스포일러 글색</label>
+                                            <div className="flex gap-1">
+                                                <input type="color" value={editData.spoilerColor || "#0f766e"} onChange={(e) => handleChange('spoilerColor', e.target.value)} className="h-7 w-8 cursor-pointer p-0 border-0" />
+                                                <input type="text" value={editData.spoilerColor || "#0f766e"} onChange={(e) => handleChange('spoilerColor', e.target.value)} className="flex-1 p-1 border rounded text-xs" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] sm:text-xs font-bold text-gray-700 mb-1">인용구 글색</label>
+                                            <div className="flex gap-1">
+                                                <input type="color" value={editData.quoteColor || "#374151"} onChange={(e) => handleChange('quoteColor', e.target.value)} className="h-7 w-8 cursor-pointer p-0 border-0" />
+                                                <input type="text" value={editData.quoteColor || "#374151"} onChange={(e) => handleChange('quoteColor', e.target.value)} className="flex-1 p-1 border rounded text-xs" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 mb-1">영문 이름</label>
+                                        <input type="text" value={editData.engName || ""} onChange={(e) => handleChange('engName', e.target.value)} className="w-full p-1.5 border rounded text-sm" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 mb-1">프로필 사진</label>
+                                        <input type="file" accept="image/*" onChange={handleImageUpload} className="w-full text-xs" />
+                                        {editData.image && (
+                                            <div className="mt-2 relative inline-block">
+                                                <img src={editData.image} alt="Preview" className="h-20 object-contain border bg-white" />
+                                                <button onClick={() => handleChange('image', '')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5"><IconX size={12} /></button>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 mb-1 flex justify-between items-center">
+                                            <span>상세 정보 칸</span>
+                                            <button onClick={addAttribute} className="text-teal-600 flex items-center hover:bg-teal-100 p-1 rounded"><IconPlus size={14} /> 추가</button>
+                                        </label>
+                                        <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                                            {(editData.attributes || []).map((attr, idx) => (
+                                                <div key={idx} className="flex gap-1 items-start">
+                                                    <input type="text" placeholder="항목" value={attr.label || ""} onChange={(e) => handleAttributeChange(idx, 'label', e.target.value)} className="w-1/3 p-1.5 border rounded text-xs" />
+                                                    <input type="text" placeholder="내용" value={attr.value || ""} onChange={(e) => handleAttributeChange(idx, 'value', e.target.value)} className="flex-1 p-1.5 border rounded text-xs" />
+                                                    <button onClick={() => removeAttribute(idx)} className="text-red-500 p-1.5 hover:bg-red-50 rounded"><IconTrash size={14} /></button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<ErrorBoundary><PersonalWikiApp /></ErrorBoundary>);
+    </script>
+</body>
+</html>
