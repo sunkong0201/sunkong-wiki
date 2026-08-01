@@ -180,9 +180,10 @@
                 
                 const newId = `doc_${Date.now()}`;
                 const newDoc = {
-                    id: newId, title: "새 문서", subtitle: "", profileColor: "#475569", spoilerColor: "#0f766e", quoteColor: "#374151", engName: "New Character", 
+                    id: newId, title: "새 문서", subtitle: "", categories: "", profileColor: "#475569", spoilerColor: "#0f766e", quoteColor: "#374151", engName: "New Character", 
                     profileImages: [], 
-                    attributes: [{ label: "정보", value: "내용" }], content: DEFAULT_DOC_TEMPLATE
+                    attributes: [{ label: "정보", value: "내용" }], content: DEFAULT_DOC_TEMPLATE,
+                    lastModified: new Date().toISOString() // 🌟 새 문서 생성 시 시간 기록
                 };
                 const newDb = { ...db, [newId]: newDoc };
                 handleSaveData(newDb);
@@ -291,7 +292,9 @@
                             <EditorView 
                                 editData={editData} setEditData={setEditData} 
                                 onSave={(newData) => {
-                                    const newDb = { ...db, [newData.id]: newData };
+                                    // 🌟 문서 저장 시 현재 시간 자동 기록
+                                    const finalData = { ...newData, lastModified: new Date().toISOString() };
+                                    const newDb = { ...db, [finalData.id]: finalData };
                                     handleSaveData(newDb);
                                     setIsEditing(false);
                                 }}
@@ -367,19 +370,43 @@
 
             return (
                 <div className="relative">
-                    <div className="flex justify-between items-end border-b-2 border-gray-300 pb-2 mb-6">
-                        <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">{doc.title}</h1>
-                        {!doc.isSystem && (
-                            <button onClick={onDelete} className="text-red-500 hover:text-red-700 text-sm flex items-center gap-1">
-                                <IconTrash size={16} /> 삭제
-                            </button>
+                    {/* 🌟 수정됨: 문서 제목과 최근 수정 시각, 분류가 나타나는 상단 헤더 영역 */}
+                    <div className="mb-6">
+                        <div className="flex justify-between items-end border-b-2 border-gray-300 pb-2 mb-2">
+                            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">{doc.title}</h1>
+                            {!doc.isSystem && (
+                                <button onClick={onDelete} className="text-red-500 hover:text-red-700 text-sm flex items-center gap-1 shrink-0">
+                                    <IconTrash size={16} /> 삭제
+                                </button>
+                            )}
+                        </div>
+                        
+                        <div className="text-right text-xs text-gray-500 mb-3">
+                            최근 수정 시각: {doc.lastModified ? (() => {
+                                const d = new Date(doc.lastModified);
+                                const pad = n => n.toString().padStart(2, '0');
+                                return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+                            })() : '기록 없음'}
+                        </div>
+
+                        {doc.categories && (
+                            <div className="border border-gray-300 p-2 mb-4 bg-white flex flex-wrap items-center gap-1 text-sm rounded-sm">
+                                <strong className="text-gray-700 mr-1">분류:</strong>
+                                <ul className="flex flex-wrap m-0 p-0 list-none items-center">
+                                    {doc.categories.split(',').filter(c => c.trim()).map((c, i, arr) => (
+                                        <li key={i} className="flex items-center">
+                                            <span className="text-teal-700 font-medium hover:underline cursor-pointer">{c.trim()}</span>
+                                            {i < arr.length - 1 && <span className="mx-2 text-gray-300">|</span>}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
                         )}
                     </div>
 
                     <div className="flex flex-col lg:flex-row gap-6 relative">
                         <div className="flex-1 order-2 lg:order-1 content-wrapper">
                             {!doc.isSystem && (
-                                // 🌟 수정됨: PC 화면에서도 사진이 작아 보이지 않게 프로필 박스 가로 넓이를 400px로 확장했습니다. (lg:w-[400px])
                                 <div className="float-none lg:float-right ml-0 lg:ml-6 mb-6 w-full lg:w-[400px] border border-gray-300 bg-white shadow-sm overflow-hidden z-10 relative">
                                     <div className="text-center p-3 text-white border-b border-gray-300" style={{ backgroundColor: docColors.profileColor }}>
                                         <div className="font-bold text-xl">{doc.title}</div>
@@ -390,7 +417,6 @@
                                         )}
                                     </div>
                                     
-                                    {/* 🌟 수정됨: 이미지 여백 낭비 제거 및 600px 제한 해제 적용 */}
                                     {profileImages.length > 0 ? (
                                         <div className={`grid ${profileImages.length === 1 ? 'grid-cols-1' : 'grid-cols-2'} gap-[1px] bg-gray-300 border-b border-gray-300 w-full`}>
                                             {profileImages.map((imgObj, idx) => (
@@ -941,6 +967,12 @@
                                     <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1">검색 구분 태그 (AU 등)</label>
                                     <input type="text" placeholder="예: 뱀파이어 AU" value={editData.subtitle || ""} onChange={(e) => handleChange('subtitle', e.target.value)} className="w-full p-2 border rounded focus:ring-2 ring-teal-400 outline-none text-sm" />
                                 </div>
+                            </div>
+
+                            {/* 🌟 수정됨: 분류 입력 칸 추가 */}
+                            <div>
+                                <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1">분류 (쉼표로 구분하여 여러 개 입력)</label>
+                                <input type="text" placeholder="예: 자캐, 평행우주, 뱀파이어" value={editData.categories || ""} onChange={(e) => handleChange('categories', e.target.value)} className="w-full p-2 border rounded focus:ring-2 ring-teal-400 outline-none text-sm" />
                             </div>
 
                             <div className="flex-1 flex flex-col">
