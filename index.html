@@ -73,6 +73,10 @@
         const IconDownload = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>;
         const IconUpload = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>;
         const IconImage = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>;
+        
+        // 🌟 순서 이동 화살표 아이콘 추가
+        const IconArrowUp = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>;
+        const IconArrowDown = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>;
 
         const INITIAL_DATA = {
             "home": {
@@ -183,7 +187,7 @@
                     id: newId, title: "새 문서", subtitle: "", categories: "", profileColor: "#475569", spoilerColor: "#0f766e", quoteColor: "#374151", engName: "New Character", 
                     profileImages: [], 
                     attributes: [{ label: "정보", value: "내용" }], content: DEFAULT_DOC_TEMPLATE,
-                    lastModified: new Date().toISOString() // 🌟 새 문서 생성 시 시간 기록
+                    lastModified: new Date().toISOString()
                 };
                 const newDb = { ...db, [newId]: newDoc };
                 handleSaveData(newDb);
@@ -292,7 +296,6 @@
                             <EditorView 
                                 editData={editData} setEditData={setEditData} 
                                 onSave={(newData) => {
-                                    // 🌟 문서 저장 시 현재 시간 자동 기록
                                     const finalData = { ...newData, lastModified: new Date().toISOString() };
                                     const newDb = { ...db, [finalData.id]: finalData };
                                     handleSaveData(newDb);
@@ -370,7 +373,6 @@
 
             return (
                 <div className="relative">
-                    {/* 🌟 수정됨: 문서 제목과 최근 수정 시각, 분류가 나타나는 상단 헤더 영역 */}
                     <div className="mb-6">
                         <div className="flex justify-between items-end border-b-2 border-gray-300 pb-2 mb-2">
                             <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">{doc.title}</h1>
@@ -882,6 +884,7 @@
             const [showHelp, setShowHelp] = useState(false);
             const handleChange = (field, value) => setEditData(prev => ({ ...prev, [field]: value }));
             
+            // 🌟 다중 프로필 사진 조작 (위/아래 이동 추가)
             const addProfileImage = () => handleChange('profileImages', [...(editData.profileImages || []), { url: "", caption: "" }]);
             const removeProfileImage = (index) => handleChange('profileImages', (editData.profileImages || []).filter((_, i) => i !== index));
             const handleProfileImageChange = (index, field, value) => {
@@ -897,7 +900,24 @@
                     reader.readAsDataURL(file);
                 }
             };
+            const moveProfileImageUp = (index) => {
+                if (index === 0) return;
+                const newImgs = [...(editData.profileImages || [])];
+                const temp = newImgs[index - 1];
+                newImgs[index - 1] = newImgs[index];
+                newImgs[index] = temp;
+                handleChange('profileImages', newImgs);
+            };
+            const moveProfileImageDown = (index) => {
+                const newImgs = [...(editData.profileImages || [])];
+                if (index === newImgs.length - 1) return;
+                const temp = newImgs[index + 1];
+                newImgs[index + 1] = newImgs[index];
+                newImgs[index] = temp;
+                handleChange('profileImages', newImgs);
+            };
 
+            // 🌟 상세 정보 칸 조작 (위/아래 이동 추가)
             const handleAttributeChange = (index, field, value) => {
                 const newAttrs = [...(editData.attributes || [])];
                 newAttrs[index][field] = value;
@@ -905,6 +925,22 @@
             };
             const addAttribute = () => handleChange('attributes', [...(editData.attributes || []), { label: "", value: "" }]);
             const removeAttribute = (index) => handleChange('attributes', (editData.attributes || []).filter((_, i) => i !== index));
+            const moveAttributeUp = (index) => {
+                if (index === 0) return;
+                const newAttrs = [...(editData.attributes || [])];
+                const temp = newAttrs[index - 1];
+                newAttrs[index - 1] = newAttrs[index];
+                newAttrs[index] = temp;
+                handleChange('attributes', newAttrs);
+            };
+            const moveAttributeDown = (index) => {
+                const newAttrs = [...(editData.attributes || [])];
+                if (index === newAttrs.length - 1) return;
+                const temp = newAttrs[index + 1];
+                newAttrs[index + 1] = newAttrs[index];
+                newAttrs[index] = temp;
+                handleChange('attributes', newAttrs);
+            };
 
             const handleContentImageUpload = (e) => {
                 const file = e.target.files[0];
@@ -969,7 +1005,6 @@
                                 </div>
                             </div>
 
-                            {/* 🌟 수정됨: 분류 입력 칸 추가 */}
                             <div>
                                 <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1">분류 (쉼표로 구분하여 여러 개 입력)</label>
                                 <input type="text" placeholder="예: 자캐, 평행우주, 뱀파이어" value={editData.categories || ""} onChange={(e) => handleChange('categories', e.target.value)} className="w-full p-2 border rounded focus:ring-2 ring-teal-400 outline-none text-sm" />
@@ -1021,6 +1056,7 @@
                                         <input type="text" value={editData.engName || ""} onChange={(e) => handleChange('engName', e.target.value)} className="w-full p-1.5 border rounded text-sm" />
                                     </div>
 
+                                    {/* 🌟 다중 프로필 사진 편집 영역 (위아래 이동 버튼 추가) */}
                                     <div>
                                         <label className="block text-xs font-bold text-gray-700 mb-1 flex justify-between items-center">
                                             <span>프로필 사진 (2열 자동 배치)</span>
@@ -1031,18 +1067,23 @@
                                                 <div className="text-xs text-gray-500 bg-gray-100 p-2 rounded text-center">추가 버튼을 눌러 사진을 등록하세요.</div>
                                             )}
                                             {(editData.profileImages || []).map((imgObj, idx) => (
-                                                <div key={idx} className="border border-gray-200 p-2 rounded bg-gray-50 flex gap-2 items-start relative">
+                                                <div key={idx} className="border border-gray-200 p-2 rounded bg-gray-50 flex gap-1 sm:gap-2 items-start relative">
+                                                    <div className="flex flex-col gap-1 mt-1">
+                                                        <button onClick={() => moveProfileImageUp(idx)} disabled={idx === 0} className={`p-1 rounded ${idx === 0 ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-200'}`}><IconArrowUp size={14} /></button>
+                                                        <button onClick={() => moveProfileImageDown(idx)} disabled={idx === (editData.profileImages || []).length - 1} className={`p-1 rounded ${idx === (editData.profileImages || []).length - 1 ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-200'}`}><IconArrowDown size={14} /></button>
+                                                    </div>
                                                     <div className="flex-1 flex flex-col gap-2">
                                                         <input type="file" accept="image/*" onChange={(e) => handleProfileImageUpload(idx, e)} className="w-full text-[10px]" />
                                                         <input type="text" placeholder="▲ 설명 (예: 1부 기본 복장)" value={imgObj.caption || ""} onChange={(e) => handleProfileImageChange(idx, 'caption', e.target.value)} className="w-full p-1.5 border rounded text-xs" />
                                                     </div>
-                                                    {imgObj.url && <img src={imgObj.url} alt="preview" className="h-12 w-12 object-contain bg-white border" />}
-                                                    <button onClick={() => removeProfileImage(idx)} className="text-red-500 hover:bg-red-100 p-1 rounded mt-1"><IconTrash size={16} /></button>
+                                                    {imgObj.url && <img src={imgObj.url} alt="preview" className="h-12 w-12 object-contain bg-white border shrink-0" />}
+                                                    <button onClick={() => removeProfileImage(idx)} className="text-red-500 hover:bg-red-100 p-1.5 rounded mt-1 shrink-0"><IconTrash size={16} /></button>
                                                 </div>
                                             ))}
                                         </div>
                                     </div>
 
+                                    {/* 🌟 상세 정보 칸 편집 영역 (위아래 이동 버튼 추가) */}
                                     <div>
                                         <label className="block text-xs font-bold text-gray-700 mb-1 flex justify-between items-center">
                                             <span>상세 정보 칸</span>
@@ -1051,9 +1092,13 @@
                                         <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                                             {(editData.attributes || []).map((attr, idx) => (
                                                 <div key={idx} className="flex gap-1 items-start">
-                                                    <input type="text" placeholder="항목" value={attr.label || ""} onChange={(e) => handleAttributeChange(idx, 'label', e.target.value)} className="w-1/3 p-1.5 border rounded text-xs" />
-                                                    <input type="text" placeholder="내용" value={attr.value || ""} onChange={(e) => handleAttributeChange(idx, 'value', e.target.value)} className="flex-1 p-1.5 border rounded text-xs" />
-                                                    <button onClick={() => removeAttribute(idx)} className="text-red-500 p-1.5 hover:bg-red-50 rounded"><IconTrash size={14} /></button>
+                                                    <div className="flex flex-col sm:flex-row gap-0 sm:gap-1 mt-0.5">
+                                                        <button onClick={() => moveAttributeUp(idx)} disabled={idx === 0} className={`p-1 rounded ${idx === 0 ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-200'}`}><IconArrowUp size={14} /></button>
+                                                        <button onClick={() => moveAttributeDown(idx)} disabled={idx === (editData.attributes || []).length - 1} className={`p-1 rounded ${idx === (editData.attributes || []).length - 1 ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-200'}`}><IconArrowDown size={14} /></button>
+                                                    </div>
+                                                    <input type="text" placeholder="항목" value={attr.label || ""} onChange={(e) => handleAttributeChange(idx, 'label', e.target.value)} className="w-1/3 p-1.5 border rounded text-xs mt-0.5" />
+                                                    <input type="text" placeholder="내용" value={attr.value || ""} onChange={(e) => handleAttributeChange(idx, 'value', e.target.value)} className="flex-1 p-1.5 border rounded text-xs mt-0.5" />
+                                                    <button onClick={() => removeAttribute(idx)} className="text-red-500 p-1.5 hover:bg-red-50 rounded mt-0.5 shrink-0"><IconTrash size={14} /></button>
                                                 </div>
                                             ))}
                                         </div>
