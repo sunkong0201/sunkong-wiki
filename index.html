@@ -46,7 +46,7 @@
             }
         }
 
-        // 🔑 👇 1단계에서 발급받은 파이어베이스 열쇠들을 아래에 덮어쓰세요! 👇
+        // 🔑 👇 아까 성공했던 [내 파이어베이스 열쇠]를 여기에 다시 덮어쓰세요! 👇
         const firebaseConfig = {
             apiKey: "AIzaSyBm1CHt21qkAunGpVaVsjfH7gqX_YdEOuc",
             authDomain: "wiki-e77fe.firebaseapp.com",
@@ -96,7 +96,6 @@
             const searchRef = useRef(null);
             const [editData, setEditData] = useState(null);
 
-            // 🌟 파이어베이스 실시간 연동 (친구가 접속해 있어도 화면이 실시간 갱신됨!)
             useEffect(() => {
                 if (!isFirebaseConfigured) {
                     const saved = localStorage.getItem('personalWikiDB');
@@ -111,7 +110,7 @@
                     if (data && data.home) {
                         setDb(data);
                     } else if (!data) {
-                        setDb(INITIAL_DATA); // 아예 비어있으면 초기 데이터 세팅
+                        setDb(INITIAL_DATA); 
                     }
                     setIsLoading(false);
                 });
@@ -128,7 +127,6 @@
                     window.scrollTo(0,0);
                 };
                 window.addEventListener('hashchange', handleHashChange);
-                // 첫 로딩 시 해시 반영
                 handleHashChange();
                 return () => window.removeEventListener('hashchange', handleHashChange);
             }, []);
@@ -163,7 +161,18 @@
             const startEditing = () => {
                 const pass = prompt("문서를 편집하려면 비밀번호를 입력하세요.");
                 if (pass !== '0201') { alert("비밀번호가 틀렸습니다."); return; }
-                setEditData({ ...currentDoc, attributes: currentDoc.attributes ? [...currentDoc.attributes] : [] });
+                
+                // 🌟 구버전 호환성: 예전 단일 사진 데이터를 다중 사진 구조로 안전하게 변환
+                let profileImgs = currentDoc.profileImages || [];
+                if (!currentDoc.profileImages && currentDoc.image) {
+                    profileImgs = [{ url: currentDoc.image, caption: "" }];
+                }
+
+                setEditData({ 
+                    ...currentDoc, 
+                    attributes: currentDoc.attributes ? [...currentDoc.attributes] : [],
+                    profileImages: profileImgs
+                });
                 setIsEditing(true);
             };
 
@@ -173,7 +182,8 @@
                 
                 const newId = `doc_${Date.now()}`;
                 const newDoc = {
-                    id: newId, title: "새 문서", subtitle: "", profileColor: "#475569", spoilerColor: "#0f766e", quoteColor: "#374151", engName: "New Character", image: "",
+                    id: newId, title: "새 문서", subtitle: "", profileColor: "#475569", spoilerColor: "#0f766e", quoteColor: "#374151", engName: "New Character", 
+                    profileImages: [], // 새로운 다중 사진 구조 사용
                     attributes: [{ label: "정보", value: "내용" }], content: DEFAULT_DOC_TEMPLATE
                 };
                 const newDb = { ...db, [newId]: newDoc };
@@ -302,6 +312,7 @@
 
         function DocumentView({ doc, navigateTo, onDelete }) {
             const docColors = {
+                profileColor: doc.profileColor || '#475569',
                 spoilerColor: doc.spoilerColor || '#0f766e',
                 quoteColor: doc.quoteColor || '#374151'
             };
@@ -354,6 +365,9 @@
                 }
             });
 
+            // 🌟 프로필 사진 데이터 규격 맞추기 (단일 사진 호환)
+            const profileImages = doc.profileImages || (doc.image ? [{ url: doc.image, caption: "" }] : []);
+
             return (
                 <div className="relative">
                     <div className="flex justify-between items-end border-b-2 border-gray-300 pb-2 mb-6">
@@ -369,7 +383,7 @@
                         <div className="flex-1 order-2 lg:order-1 content-wrapper">
                             {!doc.isSystem && (
                                 <div className="float-none lg:float-right ml-0 lg:ml-6 mb-6 w-full lg:w-72 border border-gray-300 bg-white shadow-sm overflow-hidden z-10 relative">
-                                    <div className="text-center p-3 text-white border-b border-gray-300" style={{ backgroundColor: doc.profileColor || '#0284c7' }}>
+                                    <div className="text-center p-3 text-white border-b border-gray-300" style={{ backgroundColor: docColors.profileColor }}>
                                         <div className="font-bold text-xl">{doc.title}</div>
                                         {doc.engName && (
                                             <div className="text-xs opacity-90 mt-0.5">
@@ -377,22 +391,39 @@
                                             </div>
                                         )}
                                     </div>
-                                    <div className="w-full bg-gray-100 flex items-center justify-center border-b border-gray-300 overflow-hidden">
-                                        {doc.image ? (
-                                            <img src={doc.image} alt={doc.title} className="w-full h-auto object-contain" />
-                                        ) : (
-                                            <div className="text-gray-400 flex flex-col items-center py-12">
+                                    
+                                    {/* 🌟 다중 프로필 사진 & 비율/크기 조절 표시 영역 */}
+                                    {profileImages.length > 0 ? (
+                                        <div className={`grid ${profileImages.length === 1 ? 'grid-cols-1' : 'grid-cols-2'} gap-[1px] bg-gray-300 border-b border-gray-300 w-full`}>
+                                            {profileImages.map((imgObj, idx) => (
+                                                <div key={idx} className="flex flex-col bg-gray-100">
+                                                    <div className="flex-1 flex items-center justify-center p-2 min-h-[150px]">
+                                                        {/* max-h-56 (약 224px)를 주어 태블릿에서도 과도하게 커지지 않고 비율 유지되게 설정 */}
+                                                        <img src={imgObj.url} alt={`${doc.title} ${idx}`} className="max-w-full max-h-56 object-contain drop-shadow-sm" />
+                                                    </div>
+                                                    {imgObj.caption && (
+                                                        <div className="text-center text-xs p-1 text-white border-t border-gray-300 break-keep" style={{ backgroundColor: docColors.profileColor }}>
+                                                            ▲ <InlineParser text={imgObj.caption} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="w-full bg-gray-100 flex items-center justify-center border-b border-gray-300 py-12">
+                                            <div className="text-gray-400 flex flex-col items-center">
                                                 <IconImage size={32} className="mb-2" />
                                                 <span className="text-sm font-medium">추가예정</span>
                                             </div>
-                                        )}
-                                    </div>
+                                        </div>
+                                    )}
+
                                     {parsedAttributes.length > 0 && (
                                         <table className="w-full text-sm">
                                             <tbody>
                                                 {parsedAttributes.map((attr, idx) => (
                                                     <tr key={idx} className="border-b border-gray-200 last:border-0">
-                                                        <th className="w-1/3 p-2 border-r border-gray-200 text-white font-medium text-center align-middle" style={{ backgroundColor: doc.profileColor || '#0284c7' }}>
+                                                        <th className="w-1/3 p-2 border-r border-gray-200 text-white font-medium text-center align-middle" style={{ backgroundColor: docColors.profileColor }}>
                                                             <InlineParser text={attr.label} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} />
                                                         </th>
                                                         <td className="p-2 text-center align-middle bg-white break-keep">
@@ -823,6 +854,24 @@
         function EditorView({ editData, setEditData, onSave, onCancel }) {
             const [showHelp, setShowHelp] = useState(false);
             const handleChange = (field, value) => setEditData(prev => ({ ...prev, [field]: value }));
+            
+            // 🌟 다중 프로필 사진 조작 함수
+            const addProfileImage = () => handleChange('profileImages', [...(editData.profileImages || []), { url: "", caption: "" }]);
+            const removeProfileImage = (index) => handleChange('profileImages', (editData.profileImages || []).filter((_, i) => i !== index));
+            const handleProfileImageChange = (index, field, value) => {
+                const newImgs = [...(editData.profileImages || [])];
+                newImgs[index][field] = value;
+                handleChange('profileImages', newImgs);
+            };
+            const handleProfileImageUpload = (index, e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => handleProfileImageChange(index, 'url', reader.result);
+                    reader.readAsDataURL(file);
+                }
+            };
+
             const handleAttributeChange = (index, field, value) => {
                 const newAttrs = [...(editData.attributes || [])];
                 newAttrs[index][field] = value;
@@ -831,15 +880,6 @@
             const addAttribute = () => handleChange('attributes', [...(editData.attributes || []), { label: "", value: "" }]);
             const removeAttribute = (index) => handleChange('attributes', (editData.attributes || []).filter((_, i) => i !== index));
 
-            const handleImageUpload = (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onloadend = () => handleChange('image', reader.result);
-                    reader.readAsDataURL(file);
-                }
-            };
-            
             const handleContentImageUpload = (e) => {
                 const file = e.target.files[0];
                 if (file) {
@@ -948,16 +988,30 @@
                                         <label className="block text-xs font-bold text-gray-700 mb-1">영문 이름</label>
                                         <input type="text" value={editData.engName || ""} onChange={(e) => handleChange('engName', e.target.value)} className="w-full p-1.5 border rounded text-sm" />
                                     </div>
+
+                                    {/* 🌟 다중 프로필 사진 편집 영역 */}
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-700 mb-1">프로필 사진</label>
-                                        <input type="file" accept="image/*" onChange={handleImageUpload} className="w-full text-xs" />
-                                        {editData.image && (
-                                            <div className="mt-2 relative inline-block">
-                                                <img src={editData.image} alt="Preview" className="h-20 object-contain border bg-white" />
-                                                <button onClick={() => handleChange('image', '')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5"><IconX size={12} /></button>
-                                            </div>
-                                        )}
+                                        <label className="block text-xs font-bold text-gray-700 mb-1 flex justify-between items-center">
+                                            <span>프로필 사진 (2열 자동 배치)</span>
+                                            <button onClick={addProfileImage} className="text-teal-600 flex items-center hover:bg-teal-100 p-1 rounded"><IconPlus size={14} /> 추가</button>
+                                        </label>
+                                        <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                                            {(editData.profileImages || []).length === 0 && (
+                                                <div className="text-xs text-gray-500 bg-gray-100 p-2 rounded text-center">추가 버튼을 눌러 사진을 등록하세요.</div>
+                                            )}
+                                            {(editData.profileImages || []).map((imgObj, idx) => (
+                                                <div key={idx} className="border border-gray-200 p-2 rounded bg-gray-50 flex gap-2 items-start relative">
+                                                    <div className="flex-1 flex flex-col gap-2">
+                                                        <input type="file" accept="image/*" onChange={(e) => handleProfileImageUpload(idx, e)} className="w-full text-[10px]" />
+                                                        <input type="text" placeholder="▲ 설명 (예: 1부 기본 복장)" value={imgObj.caption || ""} onChange={(e) => handleProfileImageChange(idx, 'caption', e.target.value)} className="w-full p-1.5 border rounded text-xs" />
+                                                    </div>
+                                                    {imgObj.url && <img src={imgObj.url} alt="preview" className="h-12 w-12 object-contain bg-white border" />}
+                                                    <button onClick={() => removeProfileImage(idx)} className="text-red-500 hover:bg-red-100 p-1 rounded mt-1"><IconTrash size={16} /></button>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
+
                                     <div>
                                         <label className="block text-xs font-bold text-gray-700 mb-1 flex justify-between items-center">
                                             <span>상세 정보 칸</span>
