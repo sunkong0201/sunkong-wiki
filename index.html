@@ -46,7 +46,7 @@
             }
         }
 
-        // 🔑 👇 파이어베이스 열쇠들을 여기에 다시 덮어쓰세요! 👇
+        // 🔑 👇 내 파이어베이스 열쇠를 여기에 다시 덮어쓰세요! 👇
         const firebaseConfig = {
             apiKey: "AIzaSyBm1CHt21qkAunGpVaVsjfH7gqX_YdEOuc",
             authDomain: "wiki-e77fe.firebaseapp.com",
@@ -161,7 +161,6 @@
                 const pass = prompt("문서를 편집하려면 비밀번호를 입력하세요.");
                 if (pass !== '0201') { alert("비밀번호가 틀렸습니다."); return; }
                 
-                // 🌟 구버전 호환성: 예전 단일 사진 데이터를 다중 사진 구조로 안전하게 변환
                 let profileImgs = currentDoc.profileImages || [];
                 if (!currentDoc.profileImages && currentDoc.image) {
                     profileImgs = [{ url: currentDoc.image, caption: "" }];
@@ -364,7 +363,6 @@
                 }
             });
 
-            // 🌟 프로필 사진 데이터 규격 맞추기
             const profileImages = doc.profileImages || (doc.image ? [{ url: doc.image, caption: "" }] : []);
 
             return (
@@ -381,7 +379,8 @@
                     <div className="flex flex-col lg:flex-row gap-6 relative">
                         <div className="flex-1 order-2 lg:order-1 content-wrapper">
                             {!doc.isSystem && (
-                                <div className="float-none lg:float-right ml-0 lg:ml-6 mb-6 w-full lg:w-72 border border-gray-300 bg-white shadow-sm overflow-hidden z-10 relative">
+                                // 🌟 수정됨: PC 화면에서도 사진이 작아 보이지 않게 프로필 박스 가로 넓이를 400px로 확장했습니다. (lg:w-[400px])
+                                <div className="float-none lg:float-right ml-0 lg:ml-6 mb-6 w-full lg:w-[400px] border border-gray-300 bg-white shadow-sm overflow-hidden z-10 relative">
                                     <div className="text-center p-3 text-white border-b border-gray-300" style={{ backgroundColor: docColors.profileColor }}>
                                         <div className="font-bold text-xl">{doc.title}</div>
                                         {doc.engName && (
@@ -391,16 +390,20 @@
                                         )}
                                     </div>
                                     
-                                    {/* 🌟 다중 프로필 사진 표시 영역 */}
+                                    {/* 🌟 수정됨: 이미지 여백 낭비 제거 및 600px 제한 해제 적용 */}
                                     {profileImages.length > 0 ? (
                                         <div className={`grid ${profileImages.length === 1 ? 'grid-cols-1' : 'grid-cols-2'} gap-[1px] bg-gray-300 border-b border-gray-300 w-full`}>
                                             {profileImages.map((imgObj, idx) => (
-                                                <div key={idx} className="flex flex-col bg-gray-100">
-                                                    <div className="flex-1 flex items-center justify-center p-2 min-h-[150px]">
-                                                        <img src={imgObj.url} alt={`${doc.title} ${idx}`} className="max-w-full max-h-56 object-contain drop-shadow-sm" />
+                                                <div key={idx} className="flex flex-col bg-white">
+                                                    <div className="flex-1 flex items-center justify-center bg-gray-100">
+                                                        <img 
+                                                            src={imgObj.url} 
+                                                            alt={`${doc.title} ${idx}`} 
+                                                            className={`w-full object-contain drop-shadow-sm ${profileImages.length === 1 ? 'max-h-[600px]' : 'max-h-[300px]'}`} 
+                                                        />
                                                     </div>
                                                     {imgObj.caption && (
-                                                        <div className="text-center text-xs p-1 text-white border-t border-gray-300 break-keep" style={{ backgroundColor: docColors.profileColor }}>
+                                                        <div className="text-center text-xs p-1.5 text-white border-t border-gray-300 break-keep" style={{ backgroundColor: docColors.profileColor }}>
                                                             ▲ <InlineParser text={imgObj.caption} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} />
                                                         </div>
                                                     )}
@@ -853,7 +856,6 @@
             const [showHelp, setShowHelp] = useState(false);
             const handleChange = (field, value) => setEditData(prev => ({ ...prev, [field]: value }));
             
-            // 🌟 다중 프로필 사진 조작 함수
             const addProfileImage = () => handleChange('profileImages', [...(editData.profileImages || []), { url: "", caption: "" }]);
             const removeProfileImage = (index) => handleChange('profileImages', (editData.profileImages || []).filter((_, i) => i !== index));
             const handleProfileImageChange = (index, field, value) => {
@@ -987,7 +989,6 @@
                                         <input type="text" value={editData.engName || ""} onChange={(e) => handleChange('engName', e.target.value)} className="w-full p-1.5 border rounded text-sm" />
                                     </div>
 
-                                    {/* 🌟 다중 프로필 사진 편집 영역 */}
                                     <div>
                                         <label className="block text-xs font-bold text-gray-700 mb-1 flex justify-between items-center">
                                             <span>프로필 사진 (2열 자동 배치)</span>
