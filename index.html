@@ -46,7 +46,7 @@
             }
         }
 
-        // 🔑 👇 아까 성공했던 [내 파이어베이스 열쇠]를 여기에 다시 덮어쓰세요! 👇
+        // 🔑 👇 파이어베이스 열쇠들을 여기에 다시 덮어쓰세요! 👇
         const firebaseConfig = {
             apiKey: "AIzaSyBm1CHt21qkAunGpVaVsjfH7gqX_YdEOuc",
             authDomain: "wiki-e77fe.firebaseapp.com",
@@ -63,7 +63,6 @@
             firebase.initializeApp(firebaseConfig);
         }
 
-        // --- (아이콘 컴포넌트 생략 - 기존과 동일) ---
         const IconSearch = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>;
         const IconEdit = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>;
         const IconTrash = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>;
@@ -183,7 +182,7 @@
                 const newId = `doc_${Date.now()}`;
                 const newDoc = {
                     id: newId, title: "새 문서", subtitle: "", profileColor: "#475569", spoilerColor: "#0f766e", quoteColor: "#374151", engName: "New Character", 
-                    profileImages: [], // 새로운 다중 사진 구조 사용
+                    profileImages: [], 
                     attributes: [{ label: "정보", value: "내용" }], content: DEFAULT_DOC_TEMPLATE
                 };
                 const newDb = { ...db, [newId]: newDoc };
@@ -365,7 +364,7 @@
                 }
             });
 
-            // 🌟 프로필 사진 데이터 규격 맞추기 (단일 사진 호환)
+            // 🌟 프로필 사진 데이터 규격 맞추기
             const profileImages = doc.profileImages || (doc.image ? [{ url: doc.image, caption: "" }] : []);
 
             return (
@@ -392,13 +391,12 @@
                                         )}
                                     </div>
                                     
-                                    {/* 🌟 다중 프로필 사진 & 비율/크기 조절 표시 영역 */}
+                                    {/* 🌟 다중 프로필 사진 표시 영역 */}
                                     {profileImages.length > 0 ? (
                                         <div className={`grid ${profileImages.length === 1 ? 'grid-cols-1' : 'grid-cols-2'} gap-[1px] bg-gray-300 border-b border-gray-300 w-full`}>
                                             {profileImages.map((imgObj, idx) => (
                                                 <div key={idx} className="flex flex-col bg-gray-100">
                                                     <div className="flex-1 flex items-center justify-center p-2 min-h-[150px]">
-                                                        {/* max-h-56 (약 224px)를 주어 태블릿에서도 과도하게 커지지 않고 비율 유지되게 설정 */}
                                                         <img src={imgObj.url} alt={`${doc.title} ${idx}`} className="max-w-full max-h-56 object-contain drop-shadow-sm" />
                                                     </div>
                                                     {imgObj.caption && (
