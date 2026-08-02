@@ -82,11 +82,6 @@
                 title: "대문",
                 isSystem: true,
                 content: "== 환영합니다! ==\n이곳은 개인 캐릭터 설정을 정리하는 위키입니다.\n\n우측 상단의 검색창이나 아래 목록을 통해 문서를 열람할 수 있습니다.\n문서를 수정하려면 우측 상단의 펜 아이콘을 클릭하고 비밀번호(0201)를 입력하세요.\n\n== 캐릭터 목록 ==\n[[char1|알렉스 머서]]\n[[char2|베아트리스]]"
-            },
-            "char1": {
-                id: "char1",
-                title: "샘플 문서",
-                content: "> 이 대사는 명대사입니다. <\n\n이렇게 인용구를 넣을 수 있습니다."
             }
         };
 
@@ -409,70 +404,72 @@
                         )}
                     </div>
 
-                    <div className="flex flex-col md:flex-row gap-6 relative">
-                        <div className="flex-1 order-2 md:order-1 content-wrapper">
-                            {!doc.isSystem && (
-                                // 🌟 수정됨: 화면이 넓어지면 프로필 박스가 최대 500px까지 확장됩니다.
-                                <div className="float-none md:float-right ml-0 md:ml-6 mb-6 w-full md:w-[400px] lg:w-[500px] border border-gray-300 bg-white shadow-sm overflow-hidden z-10 relative">
-                                    <div className="text-center p-3 text-white border-b border-gray-300" style={{ backgroundColor: docColors.profileColor }}>
-                                        <div className="font-bold text-xl">{doc.title}</div>
-                                        {doc.engName && (
-                                            <div className="text-xs opacity-90 mt-0.5">
-                                                <InlineParser text={parsedEngName} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} />
-                                            </div>
-                                        )}
-                                    </div>
-                                    
-                                    {/* 🌟 수정됨: 사진 너비를 w-full 로 설정하여 여백없이 꽉 차게 만들었습니다 */}
-                                    {profileImages.length > 0 ? (
-                                        <div className={`grid ${profileImages.length === 1 ? 'grid-cols-1' : 'grid-cols-2'} gap-[1px] bg-gray-300 border-b border-gray-300 w-full`}>
-                                            {profileImages.map((imgObj, idx) => (
-                                                <div key={idx} className="flex flex-col bg-white">
-                                                    <div className="w-full bg-white">
-                                                        <img 
-                                                            src={imgObj.url} 
-                                                            alt={`${doc.title} ${idx}`} 
-                                                            className="w-full h-auto block" 
-                                                        />
-                                                    </div>
-                                                    {imgObj.caption && (
-                                                        <div className="text-center text-xs p-1.5 text-white border-t border-gray-300 break-keep" style={{ backgroundColor: docColors.profileColor }}>
-                                                            ▲ <InlineParser text={imgObj.caption} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ))}
+                    {/* 🌟 수정됨: 상하 분리 레이아웃 (프로필 중앙 정렬 -> 아래 목차 -> 아래 본문) */}
+                    <div className="flex flex-col gap-6 relative">
+                        
+                        {/* 중앙 정렬된 프로필 박스 (최대 가로 700px) */}
+                        {!doc.isSystem && (
+                            <div className="mx-auto w-full max-w-[700px] border border-gray-300 bg-white shadow-sm overflow-hidden z-10 relative">
+                                <div className="text-center p-3 text-white border-b border-gray-300" style={{ backgroundColor: docColors.profileColor }}>
+                                    <div className="font-bold text-xl">{doc.title}</div>
+                                    {doc.engName && (
+                                        <div className="text-xs opacity-90 mt-0.5">
+                                            <InlineParser text={parsedEngName} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} />
                                         </div>
-                                    ) : (
-                                        <div className="w-full bg-gray-100 flex items-center justify-center border-b border-gray-300 py-12">
-                                            <div className="text-gray-400 flex flex-col items-center">
-                                                <IconImage size={32} className="mb-2" />
-                                                <span className="text-sm font-medium">추가예정</span>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {parsedAttributes.length > 0 && (
-                                        <table className="w-full text-sm">
-                                            <tbody>
-                                                {parsedAttributes.map((attr, idx) => (
-                                                    <tr key={idx} className="border-b border-gray-200 last:border-0">
-                                                        <th className="w-1/3 p-2 border-r border-gray-200 text-white font-medium text-center align-middle" style={{ backgroundColor: docColors.profileColor }}>
-                                                            <InlineParser text={attr.label} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} />
-                                                        </th>
-                                                        <td className="p-2 text-center align-middle bg-white break-keep">
-                                                            <InlineParser text={attr.value} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} />
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
                                     )}
                                 </div>
-                            )}
+                                
+                                {profileImages.length > 0 ? (
+                                    <div className={`grid ${profileImages.length === 1 ? 'grid-cols-1' : 'grid-cols-2'} gap-[1px] bg-gray-300 border-b border-gray-300 w-full`}>
+                                        {profileImages.map((imgObj, idx) => (
+                                            <div key={idx} className="flex flex-col bg-white">
+                                                <div className="w-full bg-gray-100 flex items-center justify-center">
+                                                    <img 
+                                                        src={imgObj.url} 
+                                                        alt={`${doc.title} ${idx}`} 
+                                                        className={`w-full object-contain drop-shadow-sm ${profileImages.length === 1 ? 'max-h-[600px]' : 'max-h-[400px]'}`} 
+                                                    />
+                                                </div>
+                                                {imgObj.caption && (
+                                                    <div className="text-center text-xs p-1.5 text-white border-t border-gray-300 break-keep" style={{ backgroundColor: docColors.profileColor }}>
+                                                        ▲ <InlineParser text={imgObj.caption} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="w-full bg-gray-100 flex items-center justify-center border-b border-gray-300 py-12">
+                                        <div className="text-gray-400 flex flex-col items-center">
+                                            <IconImage size={32} className="mb-2" />
+                                            <span className="text-sm font-medium">추가예정</span>
+                                        </div>
+                                    </div>
+                                )}
 
+                                {parsedAttributes.length > 0 && (
+                                    <table className="w-full text-sm">
+                                        <tbody>
+                                            {parsedAttributes.map((attr, idx) => (
+                                                <tr key={idx} className="border-b border-gray-200 last:border-0">
+                                                    <th className="w-1/3 p-2 border-r border-gray-200 text-white font-medium text-center align-middle" style={{ backgroundColor: docColors.profileColor }}>
+                                                        <InlineParser text={attr.label} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} />
+                                                    </th>
+                                                    <td className="p-2 text-center align-middle bg-white break-keep">
+                                                        <InlineParser text={attr.value} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} />
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                            </div>
+                        )}
+
+                        <div className="content-wrapper">
+                            {/* 목차 영역 */}
                             {headings.length > 0 ? (
-                                <div className="border border-gray-300 p-4 mb-6 inline-block min-w-[200px] bg-gray-50 clear-left lg:clear-none w-full sm:w-auto">
+                                <div className="border border-gray-300 p-4 mb-6 inline-block min-w-[200px] bg-gray-50 w-full sm:w-auto">
                                     <div className="font-bold mb-2 text-lg">목차</div>
                                     <ul className="list-none pl-1 space-y-1 text-sm text-blue-700">
                                         {headings.map((h, i) => (
@@ -494,6 +491,7 @@
                                 </div>
                             ) : null}
                             
+                            {/* 본문 영역 */}
                             <div className="wiki-content">
                                 <WikiRenderer content={parsedContent} navigateTo={navigateTo} globalFootnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} />
                             </div>
@@ -516,7 +514,7 @@
                 );
             }
             return (
-                <div className="mb-8 clear-left">
+                <div className="mb-8">
                     <div 
                         className="flex items-center border-b-2 border-gray-300 pb-1 mt-8 mb-4 cursor-pointer hover:bg-gray-50 transition-colors select-none group scroll-mt-20"
                         onClick={() => setIsOpen(!isOpen)}
@@ -586,7 +584,6 @@
             let foldTitle = "";
             let foldLines = [];
             
-            // 🌟 수정됨: 여러 줄 인용구 상태 관리를 위한 변수
             let isQuote = false;
             let quoteLines = [];
 
@@ -615,11 +612,9 @@
                     continue;
                 }
                 
-                // 🌟 수정됨: 인용구 시작 감지 (첫 줄)
                 if (!isQuote && line.startsWith('>')) {
                     let text = line.slice(1).trim(); 
                     if (text.endsWith('<')) {
-                        // 한 줄짜리 짧은 인용구인 경우 (바로 닫힘)
                         text = text.slice(0, -1).trim(); 
                         elements.push(
                             <blockquote key={`quote-${i}`} className="border-l-4 pl-4 py-2 my-2 bg-gray-50 italic rounded-r break-words" style={{ borderLeftColor: docColors.quoteColor, color: docColors.quoteColor }}>
@@ -627,17 +622,14 @@
                             </blockquote>
                         );
                     } else {
-                        // 닫히지 않았으면 여러 줄 인용구 모드로 진입
                         isQuote = true;
                         quoteLines = [text];
                     }
                     continue;
                 }
 
-                // 🌟 수정됨: 인용구 모드일 때 줄 추가 및 닫기 감지
                 if (isQuote) {
                     if (line.endsWith('<')) {
-                        // 인용구가 끝나는 줄
                         isQuote = false;
                         let text = line.slice(0, -1).trim(); 
                         quoteLines.push(text);
@@ -649,7 +641,6 @@
                             </blockquote>
                         );
                     } else {
-                        // 계속 인용구 내부인 줄
                         quoteLines.push(line);
                     }
                     continue;
@@ -686,7 +677,6 @@
 
             if (isFolding) elements.push(<CollapsibleBlock key={`fold-end`} title={foldTitle} content={foldLines.join('\n')} navigateTo={navigateTo} contentImages={contentImages} docColors={docColors} />);
             
-            // 혹시 마지막까지 '<' 로 안 닫아준 인용구가 있다면 자동으로 닫아줍니다
             if (isQuote) {
                 const combinedQuote = quoteLines.join('__BR__');
                 elements.push(
