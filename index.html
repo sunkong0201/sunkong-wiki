@@ -73,8 +73,6 @@
         const IconDownload = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>;
         const IconUpload = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>;
         const IconImage = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>;
-        
-        // 🌟 순서 이동 화살표 아이콘 추가
         const IconArrowUp = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>;
         const IconArrowDown = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>;
 
@@ -84,6 +82,11 @@
                 title: "대문",
                 isSystem: true,
                 content: "== 환영합니다! ==\n이곳은 개인 캐릭터 설정을 정리하는 위키입니다.\n\n우측 상단의 검색창이나 아래 목록을 통해 문서를 열람할 수 있습니다.\n문서를 수정하려면 우측 상단의 펜 아이콘을 클릭하고 비밀번호(0201)를 입력하세요.\n\n== 캐릭터 목록 ==\n[[char1|알렉스 머서]]\n[[char2|베아트리스]]"
+            },
+            "char1": {
+                id: "char1",
+                title: "샘플 문서",
+                content: "> 이 대사는 명대사입니다. <\n\n이렇게 인용구를 넣을 수 있습니다."
             }
         };
 
@@ -406,10 +409,11 @@
                         )}
                     </div>
 
-                    <div className="flex flex-col lg:flex-row gap-6 relative">
-                        <div className="flex-1 order-2 lg:order-1 content-wrapper">
+                    <div className="flex flex-col md:flex-row gap-6 relative">
+                        <div className="flex-1 order-2 md:order-1 content-wrapper">
                             {!doc.isSystem && (
-                                <div className="float-none lg:float-right ml-0 lg:ml-6 mb-6 w-full lg:w-[400px] border border-gray-300 bg-white shadow-sm overflow-hidden z-10 relative">
+                                // 🌟 수정됨: 화면이 넓어지면 프로필 박스가 최대 500px까지 확장됩니다.
+                                <div className="float-none md:float-right ml-0 md:ml-6 mb-6 w-full md:w-[400px] lg:w-[500px] border border-gray-300 bg-white shadow-sm overflow-hidden z-10 relative">
                                     <div className="text-center p-3 text-white border-b border-gray-300" style={{ backgroundColor: docColors.profileColor }}>
                                         <div className="font-bold text-xl">{doc.title}</div>
                                         {doc.engName && (
@@ -419,15 +423,16 @@
                                         )}
                                     </div>
                                     
+                                    {/* 🌟 수정됨: 사진 너비를 w-full 로 설정하여 여백없이 꽉 차게 만들었습니다 */}
                                     {profileImages.length > 0 ? (
                                         <div className={`grid ${profileImages.length === 1 ? 'grid-cols-1' : 'grid-cols-2'} gap-[1px] bg-gray-300 border-b border-gray-300 w-full`}>
                                             {profileImages.map((imgObj, idx) => (
                                                 <div key={idx} className="flex flex-col bg-white">
-                                                    <div className="flex-1 flex items-center justify-center bg-gray-100">
+                                                    <div className="w-full bg-white">
                                                         <img 
                                                             src={imgObj.url} 
                                                             alt={`${doc.title} ${idx}`} 
-                                                            className={`w-full object-contain drop-shadow-sm ${profileImages.length === 1 ? 'max-h-[600px]' : 'max-h-[300px]'}`} 
+                                                            className="w-full h-auto block" 
                                                         />
                                                     </div>
                                                     {imgObj.caption && (
@@ -580,6 +585,10 @@
             let isFolding = false;
             let foldTitle = "";
             let foldLines = [];
+            
+            // 🌟 수정됨: 여러 줄 인용구 상태 관리를 위한 변수
+            let isQuote = false;
+            let quoteLines = [];
 
             for (let i = 0; i < lines.length; i++) {
                 const rawLine = lines[i];
@@ -605,22 +614,48 @@
                     foldLines.push(rawLine);
                     continue;
                 }
-
-                if (line === '') { elements.push(<br key={`br-${i}`} />); continue; }
-
-                if (line.startsWith('> ')) {
-                    const quoteText = line.slice(2);
-                    elements.push(
-                        <blockquote 
-                            key={`quote-${i}`} 
-                            className="border-l-4 pl-4 py-2 my-2 bg-gray-50 italic rounded-r break-words"
-                            style={{ borderLeftColor: docColors.quoteColor, color: docColors.quoteColor }}
-                        >
-                            <InlineParser text={quoteText} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} />
-                        </blockquote>
-                    );
+                
+                // 🌟 수정됨: 인용구 시작 감지 (첫 줄)
+                if (!isQuote && line.startsWith('>')) {
+                    let text = line.slice(1).trim(); 
+                    if (text.endsWith('<')) {
+                        // 한 줄짜리 짧은 인용구인 경우 (바로 닫힘)
+                        text = text.slice(0, -1).trim(); 
+                        elements.push(
+                            <blockquote key={`quote-${i}`} className="border-l-4 pl-4 py-2 my-2 bg-gray-50 italic rounded-r break-words" style={{ borderLeftColor: docColors.quoteColor, color: docColors.quoteColor }}>
+                                <InlineParser text={text} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} />
+                            </blockquote>
+                        );
+                    } else {
+                        // 닫히지 않았으면 여러 줄 인용구 모드로 진입
+                        isQuote = true;
+                        quoteLines = [text];
+                    }
                     continue;
                 }
+
+                // 🌟 수정됨: 인용구 모드일 때 줄 추가 및 닫기 감지
+                if (isQuote) {
+                    if (line.endsWith('<')) {
+                        // 인용구가 끝나는 줄
+                        isQuote = false;
+                        let text = line.slice(0, -1).trim(); 
+                        quoteLines.push(text);
+                        
+                        const combinedQuote = quoteLines.join('__BR__');
+                        elements.push(
+                            <blockquote key={`quote-${i}`} className="border-l-4 pl-4 py-2 my-2 bg-gray-50 italic rounded-r break-words" style={{ borderLeftColor: docColors.quoteColor, color: docColors.quoteColor }}>
+                                <InlineParser text={combinedQuote} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} />
+                            </blockquote>
+                        );
+                    } else {
+                        // 계속 인용구 내부인 줄
+                        quoteLines.push(line);
+                    }
+                    continue;
+                }
+
+                if (line === '') { elements.push(<br key={`br-${i}`} />); continue; }
 
                 if (line === '[스포일러경고]') {
                     elements.push(
@@ -650,6 +685,17 @@
             }
 
             if (isFolding) elements.push(<CollapsibleBlock key={`fold-end`} title={foldTitle} content={foldLines.join('\n')} navigateTo={navigateTo} contentImages={contentImages} docColors={docColors} />);
+            
+            // 혹시 마지막까지 '<' 로 안 닫아준 인용구가 있다면 자동으로 닫아줍니다
+            if (isQuote) {
+                const combinedQuote = quoteLines.join('__BR__');
+                elements.push(
+                    <blockquote key={`quote-end`} className="border-l-4 pl-4 py-2 my-2 bg-gray-50 italic rounded-r break-words" style={{ borderLeftColor: docColors.quoteColor, color: docColors.quoteColor }}>
+                        <InlineParser text={combinedQuote} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} />
+                    </blockquote>
+                );
+            }
+            
             return elements;
         }
 
@@ -884,7 +930,6 @@
             const [showHelp, setShowHelp] = useState(false);
             const handleChange = (field, value) => setEditData(prev => ({ ...prev, [field]: value }));
             
-            // 🌟 다중 프로필 사진 조작 (위/아래 이동 추가)
             const addProfileImage = () => handleChange('profileImages', [...(editData.profileImages || []), { url: "", caption: "" }]);
             const removeProfileImage = (index) => handleChange('profileImages', (editData.profileImages || []).filter((_, i) => i !== index));
             const handleProfileImageChange = (index, field, value) => {
@@ -917,7 +962,6 @@
                 handleChange('profileImages', newImgs);
             };
 
-            // 🌟 상세 정보 칸 조작 (위/아래 이동 추가)
             const handleAttributeChange = (index, field, value) => {
                 const newAttrs = [...(editData.attributes || [])];
                 newAttrs[index][field] = value;
@@ -981,7 +1025,7 @@
                                     <li><strong>맞춤 숨김:</strong> <code>{"{{숨김:보여줄글씨|진짜내용}}"}</code></li>
                                     <li><strong>기본 스포일러:</strong> <code>{"{{스포일러:진짜내용}}"}</code></li>
                                     <li><strong>서식:</strong> <code>'''굵게'''</code> / <code>''기울임''</code> / <code>~~취소~~</code></li>
-                                    <li><strong>인용구/접기:</strong> <code>&gt; 인용구</code> / <code>[접기:제목]</code> 내용 <code>[/접기]</code></li>
+                                    <li><strong>여러줄 인용구:</strong> <code>&gt; 내용 적고 엔터 치다가 끝낼 때 &lt;</code></li>
                                 </ul>
                             </div>
                         </div>
@@ -1056,7 +1100,6 @@
                                         <input type="text" value={editData.engName || ""} onChange={(e) => handleChange('engName', e.target.value)} className="w-full p-1.5 border rounded text-sm" />
                                     </div>
 
-                                    {/* 🌟 다중 프로필 사진 편집 영역 (위아래 이동 버튼 추가) */}
                                     <div>
                                         <label className="block text-xs font-bold text-gray-700 mb-1 flex justify-between items-center">
                                             <span>프로필 사진 (2열 자동 배치)</span>
@@ -1083,7 +1126,6 @@
                                         </div>
                                     </div>
 
-                                    {/* 🌟 상세 정보 칸 편집 영역 (위아래 이동 버튼 추가) */}
                                     <div>
                                         <label className="block text-xs font-bold text-gray-700 mb-1 flex justify-between items-center">
                                             <span>상세 정보 칸</span>
