@@ -75,6 +75,8 @@
         const IconImage = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>;
         const IconArrowUp = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>;
         const IconArrowDown = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>;
+        // 🌟 새로 추가된 '점 3개' 아이콘
+        const IconMoreVertical = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg>;
 
         const INITIAL_DATA = {
             "home": {
@@ -93,8 +95,11 @@
             const [isEditing, setIsEditing] = useState(false);
             const [searchQuery, setSearchQuery] = useState('');
             const [showSearchRecs, setShowSearchRecs] = useState(false);
+            const [showMoreMenu, setShowMoreMenu] = useState(false); // 🌟 점 3개 메뉴 상태
+            const [galleryContext, setGalleryContext] = useState(null); // 🌟 보관함 모달 상태
             const [isLoading, setIsLoading] = useState(true);
             const searchRef = useRef(null);
+            const moreMenuRef = useRef(null);
             const [editData, setEditData] = useState(null);
 
             useEffect(() => {
@@ -125,6 +130,7 @@
                     setCurrentDocId(hashId);
                     setIsEditing(false);
                     setShowSearchRecs(false);
+                    setShowMoreMenu(false);
                     window.scrollTo(0,0);
                 };
                 window.addEventListener('hashchange', handleHashChange);
@@ -134,9 +140,8 @@
 
             useEffect(() => {
                 const handleClickOutside = (event) => {
-                    if (searchRef.current && !searchRef.current.contains(event.target)) {
-                        setShowSearchRecs(false);
-                    }
+                    if (searchRef.current && !searchRef.current.contains(event.target)) setShowSearchRecs(false);
+                    if (moreMenuRef.current && !moreMenuRef.current.contains(event.target)) setShowMoreMenu(false);
                 };
                 document.addEventListener("mousedown", handleClickOutside);
                 return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -262,6 +267,7 @@
                                     {showSearchRecs && searchQuery && (
                                         <div className="absolute top-full right-0 mt-1 w-48 sm:w-full bg-white text-gray-800 shadow-lg rounded border border-gray-200 max-h-60 overflow-y-auto z-50">
                                             {Object.values(db)
+                                                .filter(doc => doc.title && doc.id !== '_gallery') // 갤러리 객체는 검색 제외
                                                 .filter(doc => {
                                                     const fullTitle = doc.subtitle ? `${doc.title} (${doc.subtitle})` : (doc.title || "");
                                                     return fullTitle.toLowerCase().includes(searchQuery.toLowerCase());
@@ -276,14 +282,22 @@
                                     )}
                                 </div>
 
-                                <div className="flex gap-1">
+                                {/* 🌟 상단 아이콘 구역 (점 3개 메뉴 도입) */}
+                                <div className="flex gap-1 relative" ref={moreMenuRef}>
                                     <button onClick={createNewDoc} title="새 문서" className="p-1 sm:p-1.5 hover:bg-teal-600 rounded"><IconPlus size={18} /></button>
                                     {!isEditing && <button onClick={startEditing} title="편집" className="p-1 sm:p-1.5 hover:bg-teal-600 rounded"><IconEdit size={18} /></button>}
-                                    <button onClick={exportData} title="백업" className="p-1 sm:p-1.5 hover:bg-teal-600 rounded"><IconDownload size={18} /></button>
-                                    <label className="p-1 sm:p-1.5 hover:bg-teal-600 rounded cursor-pointer" title="복구">
-                                        <IconUpload size={18} />
-                                        <input type="file" accept=".json" className="hidden" onChange={importData} />
-                                    </label>
+                                    <button onClick={() => setShowMoreMenu(!showMoreMenu)} title="더보기" className="p-1 sm:p-1.5 hover:bg-teal-600 rounded"><IconMoreVertical size={18} /></button>
+                                    
+                                    {showMoreMenu && (
+                                        <div className="absolute top-full right-0 mt-2 w-48 bg-white text-gray-800 shadow-xl border border-gray-200 rounded overflow-hidden z-[100]">
+                                            <button onClick={() => { setShowMoreMenu(false); setGalleryContext({ action: null }); }} className="w-full text-left px-4 py-3 hover:bg-teal-50 border-b border-gray-100 flex items-center gap-2 text-sm font-medium"><IconImage size={16} className="text-teal-600"/> 사진 보관함</button>
+                                            <button onClick={() => { setShowMoreMenu(false); exportData(); }} className="w-full text-left px-4 py-3 hover:bg-teal-50 border-b border-gray-100 flex items-center gap-2 text-sm font-medium"><IconDownload size={16} className="text-teal-600"/> 백업 (저장)</button>
+                                            <label className="w-full text-left px-4 py-3 hover:bg-teal-50 flex items-center gap-2 cursor-pointer text-sm font-medium">
+                                                <IconUpload size={16} className="text-teal-600"/> 복구 (불러오기)
+                                                <input type="file" accept=".json" className="hidden" onChange={(e) => { setShowMoreMenu(false); importData(e); }} />
+                                            </label>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -303,16 +317,130 @@
                                     setIsEditing(false);
                                     if (currentDocId === editData.id && !db[currentDocId]) window.location.hash = 'home';
                                 }}
+                                openGallery={setGalleryContext}
+                                gallery={db._gallery || {}}
                             />
                         ) : (
-                            <DocumentView doc={currentDoc} navigateTo={navigateTo} onDelete={deleteDoc} />
+                            <DocumentView doc={currentDoc} navigateTo={navigateTo} onDelete={deleteDoc} gallery={db._gallery || {}} />
                         )}
                     </main>
+
+                    {/* 🌟 전역 사진 보관함 모달창 */}
+                    {galleryContext && (
+                        <GalleryModal 
+                            db={db} handleSaveData={handleSaveData} context={galleryContext} 
+                            onClose={() => setGalleryContext(null)} 
+                        />
+                    )}
                 </div>
             );
         }
 
-        function DocumentView({ doc, navigateTo, onDelete }) {
+        // 🌟 사진 보관함 모달 컴포넌트
+        function GalleryModal({ db, handleSaveData, context, onClose }) {
+            const [isUploading, setIsUploading] = useState(false);
+
+            const handleUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                setIsUploading(true);
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        // 용량 관리를 위한 자동 해상도 압축 (최대 1200px)
+                        const canvas = document.createElement('canvas');
+                        let { width, height } = img;
+                        const MAX_SIZE = 1200;
+                        if (width > MAX_SIZE || height > MAX_SIZE) {
+                            if (width > height) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+                            else { width *= MAX_SIZE / height; height = MAX_SIZE; }
+                        }
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+                        
+                        const newId = `img_${Date.now()}`;
+                        const newDb = { ...db, _gallery: { ...(db._gallery || {}), [newId]: compressedBase64 } };
+                        handleSaveData(newDb);
+                        setIsUploading(false);
+
+                        // 편집 중 보관함을 열었다면 업로드 직후 자동 선택
+                        if (context && context.action) {
+                            context.action(newId);
+                            onClose();
+                        }
+                    };
+                };
+                reader.readAsDataURL(file);
+            };
+
+            const handleDelete = (id) => {
+                if(!confirm("이 사진을 삭제하면 사용 중인 문서에서 사진이 보이지 않게 됩니다. 영구 삭제하시겠습니까?")) return;
+                const newDb = { ...db };
+                newDb._gallery = { ...newDb._gallery };
+                delete newDb._gallery[id];
+                handleSaveData(newDb);
+            };
+
+            const gallery = db._gallery || {};
+            // 최신 사진이 위로 오도록 정렬
+            const entries = Object.entries(gallery).sort((a,b) => b[0].localeCompare(a[0])); 
+
+            return (
+                <div className="fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-2 sm:p-4">
+                    <div className="bg-white rounded-lg w-full max-w-4xl h-[85vh] flex flex-col shadow-2xl">
+                        <div className="flex justify-between items-center p-4 border-b">
+                            <h2 className="text-xl font-bold flex items-center gap-2"><IconImage size={24} className="text-teal-600"/> 사진 보관함</h2>
+                            <button onClick={onClose} className="text-gray-500 hover:text-gray-800 bg-gray-100 rounded-full p-1"><IconX size={20}/></button>
+                        </div>
+                        <div className="p-4 border-b bg-teal-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <div className="text-sm text-teal-800">
+                                <p className="font-bold mb-1">용량 절약 및 일괄 관리 공간입니다.</p>
+                                <p className="text-xs opacity-90">새 사진을 업로드하면 서버 용량에 맞게 자동으로 최적화되어 평생 저장됩니다.</p>
+                            </div>
+                            <label className="btn-primary cursor-pointer text-sm shrink-0 shadow flex items-center gap-1">
+                                <IconPlus size={16} /> 새 사진 업로드
+                                <input type="file" accept="image/*" className="hidden" onChange={handleUpload} disabled={isUploading} />
+                            </label>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 bg-gray-100 content-start">
+                            {isUploading && <div className="col-span-full text-center py-8 text-teal-600 font-bold animate-pulse">사진을 최적화하여 업로드 중입니다...</div>}
+                            {entries.length === 0 && !isUploading && <div className="col-span-full text-center py-12 text-gray-400 font-medium">보관함이 비어있습니다. 새 사진을 올려보세요!</div>}
+                            
+                            {entries.map(([id, src]) => (
+                                <div key={id} className="bg-white border border-gray-200 rounded shadow-sm flex flex-col overflow-hidden">
+                                    <div className="h-32 bg-gray-50 flex items-center justify-center border-b p-1 relative group">
+                                        <img src={src} className="max-w-full max-h-full object-contain" />
+                                    </div>
+                                    <div className="p-2 flex flex-col gap-1">
+                                        <div className="flex gap-1 justify-center mt-1">
+                                            {context && context.action ? (
+                                                <button onClick={() => { context.action(id); onClose(); }} className="flex-1 bg-teal-100 hover:bg-teal-200 text-teal-800 text-xs py-1.5 rounded font-bold shadow-sm">이 사진 선택</button>
+                                            ) : (
+                                                <button onClick={() => { navigator.clipboard.writeText(`[사진:${id}]`); alert('태그가 복사되었습니다! 본문 원하는 곳에 붙여넣기 하세요.'); }} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-[10px] sm:text-xs py-1.5 rounded font-bold border border-gray-300">태그 복사</button>
+                                            )}
+                                            <button onClick={() => handleDelete(id)} className="bg-red-50 hover:bg-red-100 text-red-500 px-2 py-1.5 rounded border border-red-100"><IconTrash size={14}/></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // 보관함의 ID면 실제 base64로 변환해주는 도우미 함수
+        const resolveImg = (url, gallery) => {
+            if (url && url.startsWith('img_') && gallery && gallery[url]) return gallery[url];
+            return url;
+        };
+
+        function DocumentView({ doc, navigateTo, onDelete, gallery }) {
             const docColors = {
                 profileColor: doc.profileColor || '#475569',
                 spoilerColor: doc.spoilerColor || '#0f766e',
@@ -404,17 +532,14 @@
                         )}
                     </div>
 
-                    {/* 🌟 수정됨: 상하 분리 레이아웃 (프로필 중앙 정렬 -> 아래 목차 -> 아래 본문) */}
                     <div className="flex flex-col gap-6 relative">
-                        
-                        {/* 중앙 정렬된 프로필 박스 (최대 가로 700px) */}
                         {!doc.isSystem && (
                             <div className="mx-auto w-full max-w-[700px] border border-gray-300 bg-white shadow-sm overflow-hidden z-10 relative">
                                 <div className="text-center p-3 text-white border-b border-gray-300" style={{ backgroundColor: docColors.profileColor }}>
                                     <div className="font-bold text-xl">{doc.title}</div>
                                     {doc.engName && (
                                         <div className="text-xs opacity-90 mt-0.5">
-                                            <InlineParser text={parsedEngName} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} />
+                                            <InlineParser text={parsedEngName} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} gallery={gallery} />
                                         </div>
                                     )}
                                 </div>
@@ -425,14 +550,14 @@
                                             <div key={idx} className="flex flex-col bg-white">
                                                 <div className="w-full bg-gray-100 flex items-center justify-center">
                                                     <img 
-                                                        src={imgObj.url} 
+                                                        src={resolveImg(imgObj.url, gallery)} 
                                                         alt={`${doc.title} ${idx}`} 
                                                         className={`w-full object-contain drop-shadow-sm ${profileImages.length === 1 ? 'max-h-[600px]' : 'max-h-[400px]'}`} 
                                                     />
                                                 </div>
                                                 {imgObj.caption && (
                                                     <div className="text-center text-xs p-1.5 text-white border-t border-gray-300 break-keep" style={{ backgroundColor: docColors.profileColor }}>
-                                                        ▲ <InlineParser text={imgObj.caption} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} />
+                                                        ▲ <InlineParser text={imgObj.caption} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} gallery={gallery} />
                                                     </div>
                                                 )}
                                             </div>
@@ -453,10 +578,10 @@
                                             {parsedAttributes.map((attr, idx) => (
                                                 <tr key={idx} className="border-b border-gray-200 last:border-0">
                                                     <th className="w-1/3 p-2 border-r border-gray-200 text-white font-medium text-center align-middle" style={{ backgroundColor: docColors.profileColor }}>
-                                                        <InlineParser text={attr.label} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} />
+                                                        <InlineParser text={attr.label} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} gallery={gallery} />
                                                     </th>
                                                     <td className="p-2 text-center align-middle bg-white break-keep">
-                                                        <InlineParser text={attr.value} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} />
+                                                        <InlineParser text={attr.value} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} gallery={gallery} />
                                                     </td>
                                                 </tr>
                                             ))}
@@ -467,7 +592,6 @@
                         )}
 
                         <div className="content-wrapper">
-                            {/* 목차 영역 */}
                             {headings.length > 0 ? (
                                 <div className="border border-gray-300 p-4 mb-6 inline-block min-w-[200px] bg-gray-50 w-full sm:w-auto">
                                     <div className="font-bold mb-2 text-lg">목차</div>
@@ -491,9 +615,8 @@
                                 </div>
                             ) : null}
                             
-                            {/* 본문 영역 */}
                             <div className="wiki-content">
-                                <WikiRenderer content={parsedContent} navigateTo={navigateTo} globalFootnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} />
+                                <WikiRenderer content={parsedContent} navigateTo={navigateTo} globalFootnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} gallery={gallery} />
                             </div>
                         </div>
                     </div>
@@ -501,14 +624,14 @@
             );
         }
 
-        function SectionBlock({ section, navigateTo, footnotes, contentImages, docColors }) {
+        function SectionBlock({ section, navigateTo, footnotes, contentImages, docColors, gallery }) {
             const [isOpen, setIsOpen] = useState(true);
             if (!section.heading) {
                 return (
                     <div>
-                        {renderLines(section.lines, navigateTo, footnotes, contentImages, docColors)}
+                        {renderLines(section.lines, navigateTo, footnotes, contentImages, docColors, gallery)}
                         {section.subSections.map((sub, idx) => (
-                            <SubSectionBlock key={idx} subSection={sub} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} />
+                            <SubSectionBlock key={idx} subSection={sub} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} />
                         ))}
                     </div>
                 );
@@ -526,9 +649,9 @@
                     </div>
                     <div style={{ display: isOpen ? 'block' : 'none' }}>
                         <div className="pl-1 sm:pl-2">
-                            {renderLines(section.lines, navigateTo, footnotes, contentImages, docColors)}
+                            {renderLines(section.lines, navigateTo, footnotes, contentImages, docColors, gallery)}
                             {section.subSections.map((sub, idx) => (
-                                <SubSectionBlock key={idx} subSection={sub} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} />
+                                <SubSectionBlock key={idx} subSection={sub} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} />
                             ))}
                         </div>
                     </div>
@@ -536,7 +659,7 @@
             );
         }
 
-        function SubSectionBlock({ subSection, navigateTo, footnotes, contentImages, docColors }) {
+        function SubSectionBlock({ subSection, navigateTo, footnotes, contentImages, docColors, gallery }) {
             const [isOpen, setIsOpen] = useState(true);
             return (
                 <div className="mb-4 mt-6">
@@ -551,14 +674,14 @@
                     </div>
                     <div style={{ display: isOpen ? 'block' : 'none' }}>
                         <div className="pl-1 sm:pl-2">
-                            {renderLines(subSection.lines, navigateTo, footnotes, contentImages, docColors)}
+                            {renderLines(subSection.lines, navigateTo, footnotes, contentImages, docColors, gallery)}
                         </div>
                     </div>
                 </div>
             );
         }
 
-        function CollapsibleBlock({ title, content, navigateTo, contentImages, docColors }) {
+        function CollapsibleBlock({ title, content, navigateTo, contentImages, docColors, gallery }) {
             const [isOpen, setIsOpen] = useState(false);
             return (
                 <div className="border border-gray-300 rounded my-3 overflow-hidden">
@@ -571,14 +694,14 @@
                     </button>
                     {isOpen && (
                         <div className="p-3 bg-white border-t border-gray-200">
-                            {renderLines(content.split('\n'), navigateTo, [], contentImages, docColors)}
+                            {renderLines(content.split('\n'), navigateTo, [], contentImages, docColors, gallery)}
                         </div>
                     )}
                 </div>
             );
         }
 
-        function renderLines(lines, navigateTo, footnotes, contentImages, docColors) {
+        function renderLines(lines, navigateTo, footnotes, contentImages, docColors, gallery) {
             const elements = [];
             let isFolding = false;
             let foldTitle = "";
@@ -602,7 +725,7 @@
                 if (line === '[\/접기]') {
                     isFolding = false;
                     elements.push(
-                        <CollapsibleBlock key={`fold-${i}`} title={foldTitle} content={foldLines.join('\n')} navigateTo={navigateTo} contentImages={contentImages} docColors={docColors} />
+                        <CollapsibleBlock key={`fold-${i}`} title={foldTitle} content={foldLines.join('\n')} navigateTo={navigateTo} contentImages={contentImages} docColors={docColors} gallery={gallery} />
                     );
                     continue;
                 }
@@ -618,7 +741,7 @@
                         text = text.slice(0, -1).trim(); 
                         elements.push(
                             <blockquote key={`quote-${i}`} className="border-l-4 pl-4 py-2 my-2 bg-gray-50 italic rounded-r break-words" style={{ borderLeftColor: docColors.quoteColor, color: docColors.quoteColor }}>
-                                <InlineParser text={text} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} />
+                                <InlineParser text={text} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} />
                             </blockquote>
                         );
                     } else {
@@ -637,7 +760,7 @@
                         const combinedQuote = quoteLines.join('__BR__');
                         elements.push(
                             <blockquote key={`quote-${i}`} className="border-l-4 pl-4 py-2 my-2 bg-gray-50 italic rounded-r break-words" style={{ borderLeftColor: docColors.quoteColor, color: docColors.quoteColor }}>
-                                <InlineParser text={combinedQuote} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} />
+                                <InlineParser text={combinedQuote} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} />
                             </blockquote>
                         );
                     } else {
@@ -670,18 +793,18 @@
 
                 elements.push(
                     <p key={`p-${i}`} className="mb-2 relative break-words">
-                        <InlineParser text={line} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} />
+                        <InlineParser text={line} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} />
                     </p>
                 );
             }
 
-            if (isFolding) elements.push(<CollapsibleBlock key={`fold-end`} title={foldTitle} content={foldLines.join('\n')} navigateTo={navigateTo} contentImages={contentImages} docColors={docColors} />);
+            if (isFolding) elements.push(<CollapsibleBlock key={`fold-end`} title={foldTitle} content={foldLines.join('\n')} navigateTo={navigateTo} contentImages={contentImages} docColors={docColors} gallery={gallery} />);
             
             if (isQuote) {
                 const combinedQuote = quoteLines.join('__BR__');
                 elements.push(
                     <blockquote key={`quote-end`} className="border-l-4 pl-4 py-2 my-2 bg-gray-50 italic rounded-r break-words" style={{ borderLeftColor: docColors.quoteColor, color: docColors.quoteColor }}>
-                        <InlineParser text={combinedQuote} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} />
+                        <InlineParser text={combinedQuote} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} />
                     </blockquote>
                 );
             }
@@ -689,7 +812,7 @@
             return elements;
         }
 
-        function WikiRenderer({ content, navigateTo, globalFootnotes = [], contentImages = [], docColors }) {
+        function WikiRenderer({ content, navigateTo, globalFootnotes = [], contentImages = [], docColors, gallery }) {
             const sections = [];
             let currentH2 = { heading: null, numStr: "", id: "", lines: [], subSections: [] };
             let currentH3 = null;
@@ -742,7 +865,7 @@
             return (
                 <div>
                     {sections.map((sec, idx) => (
-                        <SectionBlock key={idx} section={sec} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={contentImages} docColors={docColors} />
+                        <SectionBlock key={idx} section={sec} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} />
                     ))}
                     
                     {globalFootnotes.length > 0 ? (
@@ -757,7 +880,7 @@
                                         }}>
                                             [{idx + 1}]
                                         </a>
-                                        <span><InlineParser text={fn} navigateTo={navigateTo} footnotes={globalFootnotes} isInsideFootnote={true} contentImages={contentImages} docColors={docColors} /></span>
+                                        <span><InlineParser text={fn} navigateTo={navigateTo} footnotes={globalFootnotes} isInsideFootnote={true} contentImages={contentImages} docColors={docColors} gallery={gallery} /></span>
                                     </li>
                                 ))}
                             </ul>
@@ -767,9 +890,10 @@
             );
         }
 
-        function InlineParser({ text, navigateTo, footnotes, isInsideFootnote = false, contentImages = [], docColors }) {
+        function InlineParser({ text, navigateTo, footnotes, isInsideFootnote = false, contentImages = [], docColors, gallery = {} }) {
             if (!text) return null;
-            const regex = /(\[\[.*?\]\]|\{\{숨김:.*?\|.*?\}\}|\{\{스포일러:.*?\}\}|__FOOTNOTE_\d+__|\[본문사진:\d+\]|'''.*?'''|\*\*.*?\*\*|~~.*?~~|''.*?''|__BR__)/g;
+            // 🌟 수정됨: [사진:img_...] 파싱을 위한 정규식 추가
+            const regex = /(\[\[.*?\]\]|\{\{숨김:.*?\|.*?\}\}|\{\{스포일러:.*?\}\}|__FOOTNOTE_\d+__|\[본문사진:\d+\]|\[사진:img_[^\]]+\]|'''.*?'''|\*\*.*?\*\*|~~.*?~~|''.*?''|__BR__)/g;
             const parts = text.split(regex);
 
             return (
@@ -784,7 +908,7 @@
                             const [target, display] = inner.split('|');
                             return (
                                 <a key={i} href={`#${target}`} onClick={(e) => { e.preventDefault(); navigateTo(target); }} className="text-blue-600 hover:underline font-medium">
-                                    <InlineParser text={display || target} navigateTo={navigateTo} footnotes={footnotes} isInsideFootnote={isInsideFootnote} contentImages={contentImages} docColors={docColors} />
+                                    <InlineParser text={display || target} navigateTo={navigateTo} footnotes={footnotes} isInsideFootnote={isInsideFootnote} contentImages={contentImages} docColors={docColors} gallery={gallery} />
                                 </a>
                             );
                         }
@@ -795,13 +919,13 @@
                             if (splitIndex !== -1) {
                                 const placeholder = inner.slice(0, splitIndex);
                                 const content = inner.slice(splitIndex + 1);
-                                return <SpoilerToggle key={i} placeholder={placeholder} content={content} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} />;
+                                return <SpoilerToggle key={i} placeholder={placeholder} content={content} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} />;
                             }
                         }
 
                         if (part.startsWith('{{스포일러:') && part.endsWith('}}')) {
                             const content = part.slice(7, -2);
-                            return <SpoilerToggle key={i} placeholder="스포일러 주의" content={content} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} />;
+                            return <SpoilerToggle key={i} placeholder="스포일러 주의" content={content} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} />;
                         }
                         
                         if (part.startsWith('[본문사진:') && part.endsWith(']')) {
@@ -812,17 +936,26 @@
                             return null;
                         }
 
+                        // 🌟 새로운 보관함 사진 파싱
+                        if (part.startsWith('[사진:img_') && part.endsWith(']')) {
+                            const imgId = part.slice(4, -1);
+                            if (gallery[imgId]) {
+                                return <img key={i} src={gallery[imgId]} alt={`보관함 이미지 ${imgId}`} className="max-w-full h-auto rounded my-2 border border-gray-200 block" />;
+                            }
+                            return <span key={i} className="text-red-500 border border-red-500 p-1 text-xs rounded">[삭제된 사진]</span>;
+                        }
+
                         const fnMatch = part.match(/__FOOTNOTE_(\d+)__/);
                         if (fnMatch) {
                             const fnIndex = parseInt(fnMatch[1], 10);
-                            return <FootnotePopup key={i} index={fnIndex} content={footnotes[fnIndex]} navigateTo={navigateTo} contentImages={contentImages} docColors={docColors} />;
+                            return <FootnotePopup key={i} index={fnIndex} content={footnotes[fnIndex]} navigateTo={navigateTo} contentImages={contentImages} docColors={docColors} gallery={gallery} />;
                         }
                         
                         if ((part.startsWith("'''") && part.endsWith("'''")) || (part.startsWith("**") && part.endsWith("**"))) {
                             const content = part.startsWith("'''") ? part.slice(3, -3) : part.slice(2, -2);
                             return (
                                 <strong key={i} className="font-bold">
-                                    <InlineParser text={content} navigateTo={navigateTo} footnotes={footnotes} isInsideFootnote={isInsideFootnote} contentImages={contentImages} docColors={docColors} />
+                                    <InlineParser text={content} navigateTo={navigateTo} footnotes={footnotes} isInsideFootnote={isInsideFootnote} contentImages={contentImages} docColors={docColors} gallery={gallery} />
                                 </strong>
                             );
                         }
@@ -831,7 +964,7 @@
                             const content = part.slice(2, -2);
                             return (
                                 <del key={i} className="line-through text-gray-500">
-                                    <InlineParser text={content} navigateTo={navigateTo} footnotes={footnotes} isInsideFootnote={isInsideFootnote} contentImages={contentImages} docColors={docColors} />
+                                    <InlineParser text={content} navigateTo={navigateTo} footnotes={footnotes} isInsideFootnote={isInsideFootnote} contentImages={contentImages} docColors={docColors} gallery={gallery} />
                                 </del>
                             );
                         }
@@ -840,7 +973,7 @@
                             const content = part.slice(2, -2);
                             return (
                                 <em key={i} className="italic">
-                                    <InlineParser text={content} navigateTo={navigateTo} footnotes={footnotes} isInsideFootnote={isInsideFootnote} contentImages={contentImages} docColors={docColors} />
+                                    <InlineParser text={content} navigateTo={navigateTo} footnotes={footnotes} isInsideFootnote={isInsideFootnote} contentImages={contentImages} docColors={docColors} gallery={gallery} />
                                 </em>
                             );
                         }
@@ -851,7 +984,7 @@
             );
         }
 
-        function SpoilerToggle({ placeholder, content, navigateTo, footnotes, contentImages, docColors }) {
+        function SpoilerToggle({ placeholder, content, navigateTo, footnotes, contentImages, docColors, gallery }) {
             const [isOpen, setIsOpen] = useState(false);
             
             if (isOpen) {
@@ -865,7 +998,7 @@
                             접기
                         </span>
                         <span style={{ color: docColors.spoilerColor }}>
-                            <InlineParser text={content} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} />
+                            <InlineParser text={content} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} />
                         </span>
                     </span>
                 );
@@ -883,7 +1016,7 @@
             );
         }
 
-        function FootnotePopup({ index, content, navigateTo, contentImages, docColors }) {
+        function FootnotePopup({ index, content, navigateTo, contentImages, docColors, gallery }) {
             const [show, setShow] = useState(false);
             const popupRef = useRef(null);
 
@@ -906,7 +1039,7 @@
                             <div className="hidden sm:block absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-white border-b border-r border-gray-300 rotate-45"></div>
                             
                             <div className="pr-6 max-h-[60vh] overflow-y-auto">
-                                <InlineParser text={content} navigateTo={navigateTo} footnotes={[]} isInsideFootnote={true} contentImages={contentImages} docColors={docColors} />
+                                <InlineParser text={content} navigateTo={navigateTo} footnotes={[]} isInsideFootnote={true} contentImages={contentImages} docColors={docColors} gallery={gallery} />
                             </div>
                             
                             <button className="absolute top-2 right-2 sm:top-1.5 sm:right-1.5 text-gray-400 hover:text-gray-600 bg-gray-100 sm:bg-transparent rounded-full p-1" onClick={() => setShow(false)}><IconX size={14} /></button>
@@ -916,24 +1049,17 @@
             );
         }
 
-        function EditorView({ editData, setEditData, onSave, onCancel }) {
+        function EditorView({ editData, setEditData, onSave, onCancel, openGallery, gallery }) {
             const [showHelp, setShowHelp] = useState(false);
             const handleChange = (field, value) => setEditData(prev => ({ ...prev, [field]: value }));
             
+            // 🌟 프로필 사진 칸 조작 (보관함 연동)
             const addProfileImage = () => handleChange('profileImages', [...(editData.profileImages || []), { url: "", caption: "" }]);
             const removeProfileImage = (index) => handleChange('profileImages', (editData.profileImages || []).filter((_, i) => i !== index));
             const handleProfileImageChange = (index, field, value) => {
                 const newImgs = [...(editData.profileImages || [])];
                 newImgs[index][field] = value;
                 handleChange('profileImages', newImgs);
-            };
-            const handleProfileImageUpload = (index, e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onloadend = () => handleProfileImageChange(index, 'url', reader.result);
-                    reader.readAsDataURL(file);
-                }
             };
             const moveProfileImageUp = (index) => {
                 if (index === 0) return;
@@ -974,20 +1100,6 @@
                 newAttrs[index + 1] = newAttrs[index];
                 newAttrs[index] = temp;
                 handleChange('attributes', newAttrs);
-            };
-
-            const handleContentImageUpload = (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                        const currentImages = editData.contentImages || [];
-                        const newImages = [...currentImages, reader.result];
-                        handleChange('contentImages', newImages);
-                        handleChange('content', (editData.content || "") + `\n[본문사진:${newImages.length - 1}]\n`);
-                    };
-                    reader.readAsDataURL(file);
-                }
             };
 
             return (
@@ -1047,10 +1159,15 @@
                             <div className="flex-1 flex flex-col">
                                 <div className="flex justify-between items-center mb-1">
                                     <label className="block text-xs sm:text-sm font-bold text-gray-700">본문 내용</label>
-                                    <label className="cursor-pointer text-xs bg-teal-100 hover:bg-teal-200 text-teal-800 px-2 py-1 rounded font-bold flex items-center gap-1 shadow-sm transition-colors">
-                                        <IconImage size={14} /> 본문 사진 첨부하기
-                                        <input type="file" accept="image/*" className="hidden" onChange={handleContentImageUpload} />
-                                    </label>
+                                    {/* 🌟 수정됨: 보관함 열기로 변경 */}
+                                    <button 
+                                        onClick={() => openGallery({
+                                            action: (imgId) => setEditData(prev => ({ ...prev, content: (prev.content || "") + `\n[사진:${imgId}]\n` }))
+                                        })}
+                                        className="cursor-pointer text-xs bg-teal-100 hover:bg-teal-200 text-teal-800 px-2 py-1 rounded font-bold flex items-center gap-1 shadow-sm transition-colors"
+                                    >
+                                        <IconImage size={14} /> 보관함에서 본문 사진 넣기
+                                    </button>
                                 </div>
                                 <textarea value={editData.content || ""} onChange={(e) => handleChange('content', e.target.value)} className="w-full h-80 sm:h-96 p-3 border rounded focus:ring-2 ring-teal-400 outline-none font-mono text-xs sm:text-sm leading-relaxed"></textarea>
                             </div>
@@ -1090,9 +1207,10 @@
                                         <input type="text" value={editData.engName || ""} onChange={(e) => handleChange('engName', e.target.value)} className="w-full p-1.5 border rounded text-sm" />
                                     </div>
 
+                                    {/* 🌟 수정됨: 다중 프로필 사진 보관함 연동 */}
                                     <div>
                                         <label className="block text-xs font-bold text-gray-700 mb-1 flex justify-between items-center">
-                                            <span>프로필 사진 (2열 자동 배치)</span>
+                                            <span>프로필 사진 (보관함 연동)</span>
                                             <button onClick={addProfileImage} className="text-teal-600 flex items-center hover:bg-teal-100 p-1 rounded"><IconPlus size={14} /> 추가</button>
                                         </label>
                                         <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
@@ -1106,10 +1224,21 @@
                                                         <button onClick={() => moveProfileImageDown(idx)} disabled={idx === (editData.profileImages || []).length - 1} className={`p-1 rounded ${idx === (editData.profileImages || []).length - 1 ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-200'}`}><IconArrowDown size={14} /></button>
                                                     </div>
                                                     <div className="flex-1 flex flex-col gap-2">
-                                                        <input type="file" accept="image/*" onChange={(e) => handleProfileImageUpload(idx, e)} className="w-full text-[10px]" />
+                                                        <button 
+                                                            onClick={() => openGallery({
+                                                                action: (imgId) => {
+                                                                    const newImgs = [...(editData.profileImages || [])];
+                                                                    newImgs[idx].url = imgId;
+                                                                    setEditData(prev => ({ ...prev, profileImages: newImgs }));
+                                                                }
+                                                            })}
+                                                            className="w-full text-xs bg-teal-100 hover:bg-teal-200 text-teal-800 py-1.5 px-2 rounded font-bold border border-teal-200 flex items-center justify-center gap-1"
+                                                        >
+                                                            <IconImage size={14}/> {imgObj.url ? '사진 변경' : '보관함 열기 및 사진 선택'}
+                                                        </button>
                                                         <input type="text" placeholder="▲ 설명 (예: 1부 기본 복장)" value={imgObj.caption || ""} onChange={(e) => handleProfileImageChange(idx, 'caption', e.target.value)} className="w-full p-1.5 border rounded text-xs" />
                                                     </div>
-                                                    {imgObj.url && <img src={imgObj.url} alt="preview" className="h-12 w-12 object-contain bg-white border shrink-0" />}
+                                                    {imgObj.url && <img src={resolveImg(imgObj.url, gallery)} alt="preview" className="h-12 w-12 object-contain bg-white border shrink-0" />}
                                                     <button onClick={() => removeProfileImage(idx)} className="text-red-500 hover:bg-red-100 p-1.5 rounded mt-1 shrink-0"><IconTrash size={16} /></button>
                                                 </div>
                                             ))}
