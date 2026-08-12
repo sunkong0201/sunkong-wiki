@@ -88,6 +88,26 @@
 
         const DEFAULT_DOC_TEMPLATE = "== 개요 ==\n여기에 개요를 작성하세요.\n\n== 상세 ==\n상세 내용을 작성하세요.\n\n== 작중 행적 ==\n[접기:행적 보기]\n[스포일러경고]\n행적을 작성하세요.\n[/접기]";
 
+        // 🌟 자음(초성) 추출 함수
+        const getCho = (str) => {
+            const cho = ["ㄱ","ㄲ","ㄴ","ㄷ","ㄸ","ㄹ","ㅁ","ㅂ","ㅃ","ㅅ","ㅆ","ㅇ","ㅈ","ㅉ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"];
+            for(let i=0; i<str.length; i++) {
+                const code = str.charCodeAt(i) - 44032;
+                if(code > -1 && code < 11172) return cho[Math.floor(code / 588)];
+                if(/[a-zA-Z]/.test(str[i])) return 'A-Z';
+                if(/[0-9]/.test(str[i])) return '0-9';
+                if(str[i].trim() !== '') return '기타';
+            }
+            return '기타';
+        };
+
+        const choMap = {"ㄲ":"ㄱ","ㄸ":"ㄷ","ㅃ":"ㅂ","ㅆ":"ㅅ","ㅉ":"ㅈ"};
+        const getGroup = (str) => {
+            if(!str) return '기타';
+            const initial = getCho(str);
+            return choMap[initial] || initial;
+        };
+
         function PersonalWikiApp() {
             const [db, setDb] = useState(INITIAL_DATA);
             const [currentDocId, setCurrentDocId] = useState('home');
@@ -147,7 +167,7 @@
             }, []);
 
             const navigateTo = (id) => {
-                if (db[id] || id === 'home') window.location.hash = id; 
+                if (db[id] || id === 'home' || id.startsWith('category:')) window.location.hash = id; 
                 else alert("존재하지 않는 문서입니다.");
             };
 
@@ -162,12 +182,13 @@
             };
 
             const currentDoc = db[currentDocId] || db['home'] || INITIAL_DATA['home'];
+            const isCategoryView = currentDocId.startsWith('category:');
+            const currentCategoryName = isCategoryView ? decodeURIComponent(currentDocId.replace('category:', '')) : '';
 
             const startEditing = () => {
                 const pass = prompt("문서를 편집하려면 비밀번호를 입력하세요.");
                 if (pass !== '0201') { alert("비밀번호가 틀렸습니다."); return; }
                 
-                // 🌟 예전 사진 데이터 완벽 복구
                 let profileImgs = currentDoc.profileImages || [];
                 if (profileImgs.length === 0 && currentDoc.image) {
                     profileImgs = [{ url: currentDoc.image, caption: "" }];
@@ -177,7 +198,8 @@
                     ...currentDoc, 
                     attributes: currentDoc.attributes ? [...currentDoc.attributes] : [],
                     profileImages: profileImgs,
-                    hideProfile: currentDoc.hideProfile || false // 🌟 프로필 숨김 상태 추가
+                    tables: currentDoc.tables ? [...currentDoc.tables] : [],
+                    hideProfile: currentDoc.hideProfile || false
                 });
                 setIsEditing(true);
             };
@@ -189,7 +211,7 @@
                 const newId = `doc_${Date.now()}`;
                 const newDoc = {
                     id: newId, title: "새 문서", subtitle: "", categories: "", profileColor: "#475569", spoilerColor: "#0f766e", quoteColor: "#374151", engName: "New Character", 
-                    profileImages: [], 
+                    profileImages: [], tables: [],
                     attributes: [{ label: "정보", value: "내용" }], content: DEFAULT_DOC_TEMPLATE,
                     lastModified: new Date().toISOString(),
                     hideProfile: false
@@ -201,12 +223,12 @@
                 setIsEditing(true);
             };
 
-            const deleteDoc = () => {
-                if (currentDoc.isSystem) { alert("대문은 삭제할 수 없습니다."); return; }
+            const deleteDoc = (docId) => {
+                if (db[docId] && db[docId].isSystem) { alert("대문은 삭제할 수 없습니다."); return; }
                 const pass = prompt("정말 이 문서를 삭제하시겠습니까? 비밀번호를 입력하세요.");
                 if (pass === '0201') {
                     const newDb = { ...db };
-                    delete newDb[currentDocId];
+                    delete newDb[docId];
                     handleSaveData(newDb);
                     window.location.hash = 'home';
                 }
@@ -286,7 +308,7 @@
 
                                 <div className="flex gap-1 relative" ref={moreMenuRef}>
                                     <button onClick={createNewDoc} title="새 문서" className="p-1 sm:p-1.5 hover:bg-teal-600 rounded"><IconPlus size={18} /></button>
-                                    {!isEditing && <button onClick={startEditing} title="편집" className="p-1 sm:p-1.5 hover:bg-teal-600 rounded"><IconEdit size={18} /></button>}
+                                    {(!isEditing && !isCategoryView) && <button onClick={startEditing} title="편집" className="p-1 sm:p-1.5 hover:bg-teal-600 rounded"><IconEdit size={18} /></button>}
                                     <button onClick={() => setShowMoreMenu(!showMoreMenu)} title="더보기" className="p-1 sm:p-1.5 hover:bg-teal-600 rounded"><IconMoreVertical size={18} /></button>
                                     
                                     {showMoreMenu && (
@@ -318,11 +340,14 @@
                                     setIsEditing(false);
                                     if (currentDocId === editData.id && !db[currentDocId]) window.location.hash = 'home';
                                 }}
+                                onDelete={() => deleteDoc(editData.id)}
                                 openGallery={setGalleryContext}
                                 gallery={db._gallery || {}}
                             />
+                        ) : isCategoryView ? (
+                            <CategoryView categoryName={currentCategoryName} db={db} navigateTo={navigateTo} />
                         ) : (
-                            <DocumentView doc={currentDoc} navigateTo={navigateTo} onDelete={deleteDoc} gallery={db._gallery || {}} />
+                            <DocumentView doc={currentDoc} navigateTo={navigateTo} gallery={db._gallery || {}} />
                         )}
                     </main>
 
@@ -332,6 +357,52 @@
                             onClose={() => setGalleryContext(null)} 
                         />
                     )}
+                </div>
+            );
+        }
+
+        // 🌟 분류(카테고리) 모아보기 컴포넌트
+        function CategoryView({ categoryName, db, navigateTo }) {
+            const docs = Object.values(db).filter(d => !d.isSystem && d.categories && d.categories.split(',').map(s=>s.trim()).includes(categoryName));
+            
+            const groups = {};
+            docs.sort((a,b) => (a.title||"").localeCompare(b.title||"")).forEach(d => {
+                const g = getGroup(d.title);
+                if(!groups[g]) groups[g] = [];
+                groups[g].push(d);
+            });
+
+            const groupOrder = ['ㄱ','ㄴ','ㄷ','ㄹ','ㅁ','ㅂ','ㅅ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ','A-Z','0-9','기타'];
+            const sortedKeys = Object.keys(groups).sort((a,b) => {
+                let ia = groupOrder.indexOf(a);
+                let ib = groupOrder.indexOf(b);
+                if(ia === -1) ia = 99;
+                if(ib === -1) ib = 99;
+                return ia - ib;
+            });
+
+            return (
+                <div className="p-4 sm:p-6 bg-white border border-gray-200 shadow-sm min-h-[50vh] rounded">
+                    <h1 className="text-2xl sm:text-3xl font-bold mb-6 border-b-2 border-teal-600 pb-2 text-teal-800">분류: {categoryName}</h1>
+                    {sortedKeys.length === 0 ? <p className="text-gray-500">이 분류에 해당하는 문서가 없습니다.</p> : null}
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {sortedKeys.map(k => (
+                            <div key={k} className="mb-4">
+                                <h2 className="text-xl font-bold border-b border-gray-300 mb-2 text-gray-700 pb-1">{k}</h2>
+                                <ul className="list-none space-y-2">
+                                    {groups[k].map(d => (
+                                        <li key={d.id} className="flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-teal-500 shrink-0"></span>
+                                            <a href={`#${d.id}`} onClick={(e)=>{e.preventDefault(); navigateTo(d.id);}} className="text-blue-600 hover:underline font-medium">
+                                                {d.title} {d.subtitle && <span className="text-gray-400 text-xs font-normal">({d.subtitle})</span>}
+                                            </a>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             );
         }
@@ -435,14 +506,18 @@
             return url;
         };
 
-        // 🌟 표 렌더링 컴포넌트 추가
+        // 🌟 개선된 표(Table) 렌더링 컴포넌트
         function WikiTable({ rows, navigateTo, footnotes, contentImages, docColors, gallery }) {
             return (
                 <div className="overflow-x-auto my-4 w-full">
                     <table className="border-collapse border border-gray-300 w-full text-sm">
                         <tbody>
                             {rows.map((row, rIdx) => {
-                                const cells = row.slice(2, -2).split('||');
+                                // 텍스트 호환성 처리 (|| 내용 ||)
+                                let cells = row;
+                                if (typeof row === 'string') {
+                                    cells = row.slice(2, -2).split('||').map(c => c.trim());
+                                }
                                 const isHeader = rIdx === 0;
                                 return (
                                     <tr key={rIdx}>
@@ -451,7 +526,7 @@
                                                 className={`border border-gray-300 p-2 break-keep align-middle ${isHeader ? 'text-white font-bold text-center' : 'bg-white'}`}
                                                 style={isHeader ? { backgroundColor: docColors.profileColor } : {}}
                                             >
-                                                <InlineParser text={cell.trim()} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} />
+                                                <InlineParser text={cell} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} />
                                             </td>
                                         ))}
                                     </tr>
@@ -463,7 +538,7 @@
             );
         }
 
-        function DocumentView({ doc, navigateTo, onDelete, gallery }) {
+        function DocumentView({ doc, navigateTo, gallery }) {
             const docColors = {
                 profileColor: doc.profileColor || '#475569',
                 spoilerColor: doc.spoilerColor || '#0f766e',
@@ -518,10 +593,7 @@
                 }
             });
 
-            // 🌟 예전 사진 데이터 완벽 복구 반영
             const profileImages = (doc.profileImages && doc.profileImages.length > 0) ? doc.profileImages : (doc.image ? [{ url: doc.image, caption: "" }] : []);
-            
-            // 🌟 프로필 박스 숨김 여부
             const showProfile = !doc.hideProfile;
 
             return (
@@ -529,14 +601,10 @@
                     <div className="mb-6">
                         <div className="flex justify-between items-end border-b-2 border-gray-300 pb-2 mb-2">
                             <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">{doc.title}</h1>
-                            {!doc.isSystem && (
-                                <button onClick={onDelete} className="text-red-500 hover:text-red-700 text-sm flex items-center gap-1 shrink-0">
-                                    <IconTrash size={16} /> 삭제
-                                </button>
-                            )}
                         </div>
                         
-                        <div className="text-right text-xs text-gray-500 mb-3">
+                        {/* 🌟 수정됨: 왼쪽 정렬된 수정 시각 */}
+                        <div className="text-left text-xs text-gray-500 mb-3 font-medium">
                             최근 수정 시각: {doc.lastModified ? (() => {
                                 const d = new Date(doc.lastModified);
                                 const pad = n => n.toString().padStart(2, '0');
@@ -550,7 +618,10 @@
                                 <ul className="flex flex-wrap m-0 p-0 list-none items-center">
                                     {doc.categories.split(',').filter(c => c.trim()).map((c, i, arr) => (
                                         <li key={i} className="flex items-center">
-                                            <span className="text-teal-700 font-medium hover:underline cursor-pointer">{c.trim()}</span>
+                                            {/* 🌟 수정됨: 분류 클릭 시 모아보기 화면으로 이동 */}
+                                            <a href={`#category:${c.trim()}`} onClick={(e) => { e.preventDefault(); navigateTo(`category:${c.trim()}`); }} className="text-teal-700 font-medium hover:underline cursor-pointer">
+                                                {c.trim()}
+                                            </a>
                                             {i < arr.length - 1 && <span className="mx-2 text-gray-300">|</span>}
                                         </li>
                                     ))}
@@ -560,7 +631,6 @@
                     </div>
 
                     <div className="flex flex-col gap-6 relative">
-                        {/* 🌟 숨기기 토글 적용 */}
                         {showProfile && !doc.isSystem && (
                             <div className="mx-auto w-full max-w-[700px] border border-gray-300 bg-white shadow-sm overflow-hidden z-10 relative">
                                 <div className="text-center p-3 text-white border-b border-gray-300" style={{ backgroundColor: docColors.profileColor }}>
@@ -643,8 +713,9 @@
                                 </div>
                             ) : null}
                             
+                            {/* 🌟 렌더러에 테이블 정보 전달 */}
                             <div className="wiki-content">
-                                <WikiRenderer content={parsedContent} navigateTo={navigateTo} globalFootnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} gallery={gallery} />
+                                <WikiRenderer content={parsedContent} navigateTo={navigateTo} globalFootnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} gallery={gallery} tables={doc.tables || []} />
                             </div>
                         </div>
                     </div>
@@ -652,14 +723,14 @@
             );
         }
 
-        function SectionBlock({ section, navigateTo, footnotes, contentImages, docColors, gallery }) {
+        function SectionBlock({ section, navigateTo, footnotes, contentImages, docColors, gallery, tables }) {
             const [isOpen, setIsOpen] = useState(true);
             if (!section.heading) {
                 return (
                     <div>
-                        {renderLines(section.lines, navigateTo, footnotes, contentImages, docColors, gallery)}
+                        {renderLines(section.lines, navigateTo, footnotes, contentImages, docColors, gallery, tables)}
                         {section.subSections.map((sub, idx) => (
-                            <SubSectionBlock key={idx} subSection={sub} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} />
+                            <SubSectionBlock key={idx} subSection={sub} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} tables={tables} />
                         ))}
                     </div>
                 );
@@ -677,9 +748,9 @@
                     </div>
                     <div style={{ display: isOpen ? 'block' : 'none' }}>
                         <div className="pl-1 sm:pl-2">
-                            {renderLines(section.lines, navigateTo, footnotes, contentImages, docColors, gallery)}
+                            {renderLines(section.lines, navigateTo, footnotes, contentImages, docColors, gallery, tables)}
                             {section.subSections.map((sub, idx) => (
-                                <SubSectionBlock key={idx} subSection={sub} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} />
+                                <SubSectionBlock key={idx} subSection={sub} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} tables={tables} />
                             ))}
                         </div>
                     </div>
@@ -687,7 +758,7 @@
             );
         }
 
-        function SubSectionBlock({ subSection, navigateTo, footnotes, contentImages, docColors, gallery }) {
+        function SubSectionBlock({ subSection, navigateTo, footnotes, contentImages, docColors, gallery, tables }) {
             const [isOpen, setIsOpen] = useState(true);
             return (
                 <div className="mb-4 mt-6">
@@ -702,14 +773,14 @@
                     </div>
                     <div style={{ display: isOpen ? 'block' : 'none' }}>
                         <div className="pl-1 sm:pl-2">
-                            {renderLines(subSection.lines, navigateTo, footnotes, contentImages, docColors, gallery)}
+                            {renderLines(subSection.lines, navigateTo, footnotes, contentImages, docColors, gallery, tables)}
                         </div>
                     </div>
                 </div>
             );
         }
 
-        function CollapsibleBlock({ title, content, navigateTo, contentImages, docColors, gallery }) {
+        function CollapsibleBlock({ title, content, navigateTo, contentImages, docColors, gallery, tables }) {
             const [isOpen, setIsOpen] = useState(false);
             return (
                 <div className="border border-gray-300 rounded my-3 overflow-hidden">
@@ -722,14 +793,14 @@
                     </button>
                     {isOpen && (
                         <div className="p-3 bg-white border-t border-gray-200">
-                            {renderLines(content.split('\n'), navigateTo, [], contentImages, docColors, gallery)}
+                            {renderLines(content.split('\n'), navigateTo, [], contentImages, docColors, gallery, tables)}
                         </div>
                     )}
                 </div>
             );
         }
 
-        function renderLines(lines, navigateTo, footnotes, contentImages, docColors, gallery) {
+        function renderLines(lines, navigateTo, footnotes, contentImages, docColors, gallery, tables) {
             const elements = [];
             let isFolding = false;
             let foldTitle = "";
@@ -738,7 +809,6 @@
             let isQuote = false;
             let quoteLines = [];
 
-            // 🌟 표(Table) 렌더링 상태 변수
             let inTable = false;
             let tableRows = [];
 
@@ -757,7 +827,7 @@
                 if (line === '[\/접기]') {
                     isFolding = false;
                     elements.push(
-                        <CollapsibleBlock key={`fold-${i}`} title={foldTitle} content={foldLines.join('\n')} navigateTo={navigateTo} contentImages={contentImages} docColors={docColors} gallery={gallery} />
+                        <CollapsibleBlock key={`fold-${i}`} title={foldTitle} content={foldLines.join('\n')} navigateTo={navigateTo} contentImages={contentImages} docColors={docColors} gallery={gallery} tables={tables} />
                     );
                     continue;
                 }
@@ -767,16 +837,25 @@
                     continue;
                 }
                 
-                // 🌟 표(Table) 구문 파싱 (`|| 셀 || 셀 ||`)
+                // 🌟 예전 방식의 수동 텍스트 표 파싱 유지 (하위 호환)
                 if (line.startsWith('||') && line.endsWith('||')) {
                     inTable = true;
                     tableRows.push(line);
                     continue;
                 } else if (inTable) {
-                    // 표가 끝났을 때 렌더링
                     elements.push(<WikiTable key={`table-${i}`} rows={tableRows} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} />);
                     inTable = false;
                     tableRows = [];
+                }
+
+                // 🌟 새 방식의 [표:idx] 태그를 만났을 때 렌더링
+                const guiTableMatch = line.match(/^\[표:(\d+)\]$/);
+                if (guiTableMatch) {
+                    const tIdx = parseInt(guiTableMatch[1], 10);
+                    if (tables && tables[tIdx]) {
+                        elements.push(<WikiTable key={`guitable-${i}`} rows={tables[tIdx].rows} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} />);
+                    }
+                    continue;
                 }
                 
                 if (!isQuote && line.startsWith('>')) {
@@ -842,7 +921,7 @@
                 );
             }
 
-            if (isFolding) elements.push(<CollapsibleBlock key={`fold-end`} title={foldTitle} content={foldLines.join('\n')} navigateTo={navigateTo} contentImages={contentImages} docColors={docColors} gallery={gallery} />);
+            if (isFolding) elements.push(<CollapsibleBlock key={`fold-end`} title={foldTitle} content={foldLines.join('\n')} navigateTo={navigateTo} contentImages={contentImages} docColors={docColors} gallery={gallery} tables={tables} />);
             if (inTable) elements.push(<WikiTable key={`table-end`} rows={tableRows} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} />);
             if (isQuote) {
                 const combinedQuote = quoteLines.join('__BR__');
@@ -856,7 +935,7 @@
             return elements;
         }
 
-        function WikiRenderer({ content, navigateTo, globalFootnotes = [], contentImages = [], docColors, gallery }) {
+        function WikiRenderer({ content, navigateTo, globalFootnotes = [], contentImages = [], docColors, gallery, tables }) {
             const sections = [];
             let currentH2 = { heading: null, numStr: "", id: "", lines: [], subSections: [] };
             let currentH3 = null;
@@ -909,7 +988,7 @@
             return (
                 <div>
                     {sections.map((sec, idx) => (
-                        <SectionBlock key={idx} section={sec} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} />
+                        <SectionBlock key={idx} section={sec} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} tables={tables} />
                     ))}
                     
                     {globalFootnotes.length > 0 ? (
@@ -1091,7 +1170,7 @@
             );
         }
 
-        function EditorView({ editData, setEditData, onSave, onCancel, openGallery, gallery }) {
+        function EditorView({ editData, setEditData, onSave, onCancel, onDelete, openGallery, gallery }) {
             const [showHelp, setShowHelp] = useState(false);
             const handleChange = (field, value) => setEditData(prev => ({ ...prev, [field]: value }));
             
@@ -1143,11 +1222,66 @@
                 handleChange('attributes', newAttrs);
             };
 
+            // 🌟 표 편집(GUI) 관련 함수들
+            const addTable = () => handleChange('tables', [...(editData.tables || []), { rows: [['항목1', '항목2'], ['내용1', '내용2']] }]);
+            const removeTable = (tIdx) => handleChange('tables', (editData.tables || []).filter((_, i) => i !== tIdx));
+            const addRow = (tIdx) => {
+                const newTables = [...(editData.tables || [])];
+                const colCount = newTables[tIdx].rows[0].length;
+                newTables[tIdx].rows.push(new Array(colCount).fill(''));
+                handleChange('tables', newTables);
+            };
+            const removeRow = (tIdx) => {
+                const newTables = [...(editData.tables || [])];
+                if(newTables[tIdx].rows.length > 1) {
+                    newTables[tIdx].rows.pop();
+                    handleChange('tables', newTables);
+                }
+            };
+            const addCol = (tIdx) => {
+                const newTables = [...(editData.tables || [])];
+                newTables[tIdx].rows = newTables[tIdx].rows.map(row => [...row, '']);
+                handleChange('tables', newTables);
+            };
+            const removeCol = (tIdx) => {
+                const newTables = [...(editData.tables || [])];
+                if(newTables[tIdx].rows[0].length > 1) {
+                    newTables[tIdx].rows = newTables[tIdx].rows.map(row => row.slice(0, -1));
+                    handleChange('tables', newTables);
+                }
+            };
+            const handleTableCell = (tIdx, rIdx, cIdx, val) => {
+                const newTables = [...(editData.tables || [])];
+                newTables[tIdx].rows[rIdx][cIdx] = val;
+                handleChange('tables', newTables);
+            };
+
+            const handleContentImageUpload = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        const currentImages = editData.contentImages || [];
+                        const newImages = [...currentImages, reader.result];
+                        handleChange('contentImages', newImages);
+                        handleChange('content', (editData.content || "") + `\n[본문사진:${newImages.length - 1}]\n`);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
             return (
                 <div className="flex flex-col gap-4 relative">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-2">
                         <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2"><IconEdit className="text-teal-600" /> 문서 편집</h2>
-                        <div className="flex gap-2 w-full sm:w-auto justify-end">
+                        
+                        {/* 🌟 수정됨: 삭제 버튼을 좌측/중앙에 배치하고, 나머지 버튼은 우측에 묶음 */}
+                        <div className="flex gap-2 w-full sm:w-auto justify-end items-center flex-wrap">
+                            {!editData.isSystem && (
+                                <button onClick={onDelete} className="text-red-500 hover:text-red-700 text-sm flex items-center gap-1 mr-auto sm:mr-4 border border-red-200 px-2 py-1 rounded bg-red-50">
+                                    <IconTrash size={16} /> 문서 삭제
+                                </button>
+                            )}
                             <button onClick={() => setShowHelp(!showHelp)} className="btn-secondary flex items-center gap-1 text-sm"><IconHelp size={16} /> 도움말</button>
                             <button onClick={onCancel} className="btn-secondary text-sm">취소</button>
                             <button onClick={() => onSave(editData)} className="btn-primary flex items-center gap-1 text-sm"><IconSave size={16} /> 저장</button>
@@ -1165,7 +1299,7 @@
                                     <li><strong>주석 (플로팅):</strong> <code>[* 주석내용]</code></li>
                                 </ul>
                                 <ul className="list-disc pl-5 space-y-1">
-                                    <li><strong>표 (Table):</strong> <code>|| 항목1 || 항목2 ||</code> 줄바꿈</li>
+                                    <li><strong>맞춤 숨김:</strong> <code>{"{{숨김:보여줄글씨|진짜내용}}"}</code></li>
                                     <li><strong>기본 스포일러:</strong> <code>{"{{스포일러:진짜내용}}"}</code></li>
                                     <li><strong>서식:</strong> <code>'''굵게'''</code> / <code>''기울임''</code> / <code>~~취소~~</code></li>
                                     <li><strong>여러줄 인용구:</strong> <code>&gt; 내용 적고 엔터 치다가 끝낼 때 &lt;</code></li>
@@ -1197,16 +1331,60 @@
                                 <input type="text" placeholder="예: 자캐, 평행우주, 뱀파이어" value={editData.categories || ""} onChange={(e) => handleChange('categories', e.target.value)} className="w-full p-2 border rounded focus:ring-2 ring-teal-400 outline-none text-sm" />
                             </div>
 
+                            {/* 🌟 표(Table) GUI 에디터 구역 추가 */}
+                            <div className="border border-gray-200 p-4 rounded bg-gray-50 mb-2">
+                                <div className="flex justify-between items-center mb-2">
+                                    <h3 className="font-bold text-gray-800 text-sm sm:text-base">표(Table) 에디터</h3>
+                                    <button onClick={addTable} className="text-teal-600 flex items-center hover:bg-teal-100 px-2 py-1 rounded text-xs font-bold bg-white border border-teal-200 shadow-sm"><IconPlus size={14}/> 새 표 만들기</button>
+                                </div>
+                                
+                                {(editData.tables || []).map((table, tIdx) => (
+                                    <div key={tIdx} className="mb-4 bg-white p-3 border rounded shadow-sm">
+                                        <div className="flex justify-between items-center mb-3 border-b pb-2">
+                                            <span className="font-bold text-teal-700 text-sm">표 번호: {tIdx}</span>
+                                            <div className="flex gap-2">
+                                                <button onClick={() => setEditData(prev => ({...prev, content: (prev.content||"") + `\n[표:${tIdx}]\n`}))} className="bg-teal-100 text-teal-800 text-xs px-2 py-1 rounded hover:bg-teal-200 font-bold shadow-sm">
+                                                    본문에 [표:{tIdx}] 넣기
+                                                </button>
+                                                <button onClick={()=>removeTable(tIdx)} className="text-red-500 hover:bg-red-50 p-1 rounded"><IconTrash size={16}/></button>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex flex-wrap gap-2 mb-3 text-xs">
+                                            <button onClick={()=>addRow(tIdx)} className="border border-gray-300 bg-gray-50 px-2 py-1.5 rounded hover:bg-gray-100 font-medium">+ 행(가로) 추가</button>
+                                            <button onClick={()=>removeRow(tIdx)} className="border border-gray-300 bg-gray-50 px-2 py-1.5 rounded hover:bg-gray-100 font-medium">- 행 삭제</button>
+                                            <button onClick={()=>addCol(tIdx)} className="border border-gray-300 bg-gray-50 px-2 py-1.5 rounded hover:bg-gray-100 font-medium">+ 열(세로) 추가</button>
+                                            <button onClick={()=>removeCol(tIdx)} className="border border-gray-300 bg-gray-50 px-2 py-1.5 rounded hover:bg-gray-100 font-medium">- 열 삭제</button>
+                                        </div>
+                                        
+                                        <div className="overflow-x-auto pb-2">
+                                            <table className="border-collapse border border-gray-300 w-full text-xs min-w-[300px]">
+                                                <tbody>
+                                                    {table.rows.map((row, rIdx) => (
+                                                        <tr key={rIdx}>
+                                                            {row.map((cell, cIdx) => (
+                                                                <td key={cIdx} className="border border-gray-300 p-1 relative group">
+                                                                    <textarea 
+                                                                        value={cell} 
+                                                                        onChange={(e)=>handleTableCell(tIdx, rIdx, cIdx, e.target.value)} 
+                                                                        className="w-full p-1 outline-none resize-y min-h-[40px] focus:ring-1 ring-teal-400" 
+                                                                        placeholder={rIdx === 0 ? `제목 항목` : `내용`} 
+                                                                    />
+                                                                </td>
+                                                            ))}
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
                             <div className="flex-1 flex flex-col">
                                 <div className="flex justify-between items-center mb-1">
                                     <label className="block text-xs sm:text-sm font-bold text-gray-700">본문 내용</label>
                                     <div className="flex gap-2">
-                                        <button 
-                                            onClick={() => setEditData(prev => ({ ...prev, content: (prev.content || "") + `\n|| 항목1 || 항목2 ||\n|| 내용1 || 내용2 ||\n` }))}
-                                            className="cursor-pointer text-xs bg-gray-100 hover:bg-gray-200 text-gray-800 px-2 py-1 rounded font-bold flex items-center gap-1 shadow-sm transition-colors border border-gray-300"
-                                        >
-                                            표(Table) 넣기
-                                        </button>
                                         <button 
                                             onClick={() => openGallery({
                                                 action: (imgId) => setEditData(prev => ({ ...prev, content: (prev.content || "") + `\n[사진:${imgId}]\n` }))
@@ -1226,7 +1404,7 @@
                                 <div className="flex justify-between items-center mb-4 border-b pb-2">
                                     <h3 className="font-bold text-base sm:text-lg">프로필 박스 설정</h3>
                                     <label className="flex items-center gap-1 cursor-pointer text-sm font-bold text-gray-700 bg-white px-2 py-1 border border-gray-300 rounded shadow-sm hover:bg-gray-100">
-                                        <input type="checkbox" checked={editData.hideProfile || false} onChange={(e) => handleChange('hideProfile', e.target.checked)} />
+                                        <input type="checkbox" checked={editData.hideProfile || false} onChange={(e) => handleChange('hideProfile', e.target.checked)} className="accent-teal-600 w-4 h-4" />
                                         프로필 숨기기
                                     </label>
                                 </div>
