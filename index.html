@@ -75,7 +75,6 @@
         const IconImage = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>;
         const IconArrowUp = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>;
         const IconArrowDown = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>;
-        // 🌟 새로 추가된 '점 3개' 아이콘
         const IconMoreVertical = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg>;
 
         const INITIAL_DATA = {
@@ -95,8 +94,8 @@
             const [isEditing, setIsEditing] = useState(false);
             const [searchQuery, setSearchQuery] = useState('');
             const [showSearchRecs, setShowSearchRecs] = useState(false);
-            const [showMoreMenu, setShowMoreMenu] = useState(false); // 🌟 점 3개 메뉴 상태
-            const [galleryContext, setGalleryContext] = useState(null); // 🌟 보관함 모달 상태
+            const [showMoreMenu, setShowMoreMenu] = useState(false);
+            const [galleryContext, setGalleryContext] = useState(null);
             const [isLoading, setIsLoading] = useState(true);
             const searchRef = useRef(null);
             const moreMenuRef = useRef(null);
@@ -168,15 +167,17 @@
                 const pass = prompt("문서를 편집하려면 비밀번호를 입력하세요.");
                 if (pass !== '0201') { alert("비밀번호가 틀렸습니다."); return; }
                 
+                // 🌟 예전 사진 데이터 완벽 복구
                 let profileImgs = currentDoc.profileImages || [];
-                if (!currentDoc.profileImages && currentDoc.image) {
+                if (profileImgs.length === 0 && currentDoc.image) {
                     profileImgs = [{ url: currentDoc.image, caption: "" }];
                 }
 
                 setEditData({ 
                     ...currentDoc, 
                     attributes: currentDoc.attributes ? [...currentDoc.attributes] : [],
-                    profileImages: profileImgs
+                    profileImages: profileImgs,
+                    hideProfile: currentDoc.hideProfile || false // 🌟 프로필 숨김 상태 추가
                 });
                 setIsEditing(true);
             };
@@ -190,7 +191,8 @@
                     id: newId, title: "새 문서", subtitle: "", categories: "", profileColor: "#475569", spoilerColor: "#0f766e", quoteColor: "#374151", engName: "New Character", 
                     profileImages: [], 
                     attributes: [{ label: "정보", value: "내용" }], content: DEFAULT_DOC_TEMPLATE,
-                    lastModified: new Date().toISOString()
+                    lastModified: new Date().toISOString(),
+                    hideProfile: false
                 };
                 const newDb = { ...db, [newId]: newDoc };
                 handleSaveData(newDb);
@@ -267,7 +269,7 @@
                                     {showSearchRecs && searchQuery && (
                                         <div className="absolute top-full right-0 mt-1 w-48 sm:w-full bg-white text-gray-800 shadow-lg rounded border border-gray-200 max-h-60 overflow-y-auto z-50">
                                             {Object.values(db)
-                                                .filter(doc => doc.title && doc.id !== '_gallery') // 갤러리 객체는 검색 제외
+                                                .filter(doc => doc.title && doc.id !== '_gallery')
                                                 .filter(doc => {
                                                     const fullTitle = doc.subtitle ? `${doc.title} (${doc.subtitle})` : (doc.title || "");
                                                     return fullTitle.toLowerCase().includes(searchQuery.toLowerCase());
@@ -282,7 +284,6 @@
                                     )}
                                 </div>
 
-                                {/* 🌟 상단 아이콘 구역 (점 3개 메뉴 도입) */}
                                 <div className="flex gap-1 relative" ref={moreMenuRef}>
                                     <button onClick={createNewDoc} title="새 문서" className="p-1 sm:p-1.5 hover:bg-teal-600 rounded"><IconPlus size={18} /></button>
                                     {!isEditing && <button onClick={startEditing} title="편집" className="p-1 sm:p-1.5 hover:bg-teal-600 rounded"><IconEdit size={18} /></button>}
@@ -325,7 +326,6 @@
                         )}
                     </main>
 
-                    {/* 🌟 전역 사진 보관함 모달창 */}
                     {galleryContext && (
                         <GalleryModal 
                             db={db} handleSaveData={handleSaveData} context={galleryContext} 
@@ -336,7 +336,6 @@
             );
         }
 
-        // 🌟 사진 보관함 모달 컴포넌트
         function GalleryModal({ db, handleSaveData, context, onClose }) {
             const [isUploading, setIsUploading] = useState(false);
 
@@ -349,7 +348,6 @@
                     const img = new Image();
                     img.src = event.target.result;
                     img.onload = () => {
-                        // 용량 관리를 위한 자동 해상도 압축 (최대 1200px)
                         const canvas = document.createElement('canvas');
                         let { width, height } = img;
                         const MAX_SIZE = 1200;
@@ -368,7 +366,6 @@
                         handleSaveData(newDb);
                         setIsUploading(false);
 
-                        // 편집 중 보관함을 열었다면 업로드 직후 자동 선택
                         if (context && context.action) {
                             context.action(newId);
                             onClose();
@@ -387,7 +384,6 @@
             };
 
             const gallery = db._gallery || {};
-            // 최신 사진이 위로 오도록 정렬
             const entries = Object.entries(gallery).sort((a,b) => b[0].localeCompare(a[0])); 
 
             return (
@@ -434,11 +430,38 @@
             );
         }
 
-        // 보관함의 ID면 실제 base64로 변환해주는 도우미 함수
         const resolveImg = (url, gallery) => {
             if (url && url.startsWith('img_') && gallery && gallery[url]) return gallery[url];
             return url;
         };
+
+        // 🌟 표 렌더링 컴포넌트 추가
+        function WikiTable({ rows, navigateTo, footnotes, contentImages, docColors, gallery }) {
+            return (
+                <div className="overflow-x-auto my-4 w-full">
+                    <table className="border-collapse border border-gray-300 w-full text-sm">
+                        <tbody>
+                            {rows.map((row, rIdx) => {
+                                const cells = row.slice(2, -2).split('||');
+                                const isHeader = rIdx === 0;
+                                return (
+                                    <tr key={rIdx}>
+                                        {cells.map((cell, cIdx) => (
+                                            <td key={cIdx} 
+                                                className={`border border-gray-300 p-2 break-keep align-middle ${isHeader ? 'text-white font-bold text-center' : 'bg-white'}`}
+                                                style={isHeader ? { backgroundColor: docColors.profileColor } : {}}
+                                            >
+                                                <InlineParser text={cell.trim()} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} />
+                                            </td>
+                                        ))}
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            );
+        }
 
         function DocumentView({ doc, navigateTo, onDelete, gallery }) {
             const docColors = {
@@ -495,7 +518,11 @@
                 }
             });
 
-            const profileImages = doc.profileImages || (doc.image ? [{ url: doc.image, caption: "" }] : []);
+            // 🌟 예전 사진 데이터 완벽 복구 반영
+            const profileImages = (doc.profileImages && doc.profileImages.length > 0) ? doc.profileImages : (doc.image ? [{ url: doc.image, caption: "" }] : []);
+            
+            // 🌟 프로필 박스 숨김 여부
+            const showProfile = !doc.hideProfile;
 
             return (
                 <div className="relative">
@@ -533,7 +560,8 @@
                     </div>
 
                     <div className="flex flex-col gap-6 relative">
-                        {!doc.isSystem && (
+                        {/* 🌟 숨기기 토글 적용 */}
+                        {showProfile && !doc.isSystem && (
                             <div className="mx-auto w-full max-w-[700px] border border-gray-300 bg-white shadow-sm overflow-hidden z-10 relative">
                                 <div className="text-center p-3 text-white border-b border-gray-300" style={{ backgroundColor: docColors.profileColor }}>
                                     <div className="font-bold text-xl">{doc.title}</div>
@@ -591,7 +619,7 @@
                             </div>
                         )}
 
-                        <div className="content-wrapper">
+                        <div className="content-wrapper w-full">
                             {headings.length > 0 ? (
                                 <div className="border border-gray-300 p-4 mb-6 inline-block min-w-[200px] bg-gray-50 w-full sm:w-auto">
                                     <div className="font-bold mb-2 text-lg">목차</div>
@@ -710,6 +738,10 @@
             let isQuote = false;
             let quoteLines = [];
 
+            // 🌟 표(Table) 렌더링 상태 변수
+            let inTable = false;
+            let tableRows = [];
+
             for (let i = 0; i < lines.length; i++) {
                 const rawLine = lines[i];
                 const line = rawLine.trim();
@@ -733,6 +765,18 @@
                 if (isFolding) {
                     foldLines.push(rawLine);
                     continue;
+                }
+                
+                // 🌟 표(Table) 구문 파싱 (`|| 셀 || 셀 ||`)
+                if (line.startsWith('||') && line.endsWith('||')) {
+                    inTable = true;
+                    tableRows.push(line);
+                    continue;
+                } else if (inTable) {
+                    // 표가 끝났을 때 렌더링
+                    elements.push(<WikiTable key={`table-${i}`} rows={tableRows} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} />);
+                    inTable = false;
+                    tableRows = [];
                 }
                 
                 if (!isQuote && line.startsWith('>')) {
@@ -799,7 +843,7 @@
             }
 
             if (isFolding) elements.push(<CollapsibleBlock key={`fold-end`} title={foldTitle} content={foldLines.join('\n')} navigateTo={navigateTo} contentImages={contentImages} docColors={docColors} gallery={gallery} />);
-            
+            if (inTable) elements.push(<WikiTable key={`table-end`} rows={tableRows} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} />);
             if (isQuote) {
                 const combinedQuote = quoteLines.join('__BR__');
                 elements.push(
@@ -892,7 +936,6 @@
 
         function InlineParser({ text, navigateTo, footnotes, isInsideFootnote = false, contentImages = [], docColors, gallery = {} }) {
             if (!text) return null;
-            // 🌟 수정됨: [사진:img_...] 파싱을 위한 정규식 추가
             const regex = /(\[\[.*?\]\]|\{\{숨김:.*?\|.*?\}\}|\{\{스포일러:.*?\}\}|__FOOTNOTE_\d+__|\[본문사진:\d+\]|\[사진:img_[^\]]+\]|'''.*?'''|\*\*.*?\*\*|~~.*?~~|''.*?''|__BR__)/g;
             const parts = text.split(regex);
 
@@ -936,7 +979,6 @@
                             return null;
                         }
 
-                        // 🌟 새로운 보관함 사진 파싱
                         if (part.startsWith('[사진:img_') && part.endsWith(']')) {
                             const imgId = part.slice(4, -1);
                             if (gallery[imgId]) {
@@ -1053,7 +1095,6 @@
             const [showHelp, setShowHelp] = useState(false);
             const handleChange = (field, value) => setEditData(prev => ({ ...prev, [field]: value }));
             
-            // 🌟 프로필 사진 칸 조작 (보관함 연동)
             const addProfileImage = () => handleChange('profileImages', [...(editData.profileImages || []), { url: "", caption: "" }]);
             const removeProfileImage = (index) => handleChange('profileImages', (editData.profileImages || []).filter((_, i) => i !== index));
             const handleProfileImageChange = (index, field, value) => {
@@ -1124,7 +1165,7 @@
                                     <li><strong>주석 (플로팅):</strong> <code>[* 주석내용]</code></li>
                                 </ul>
                                 <ul className="list-disc pl-5 space-y-1">
-                                    <li><strong>맞춤 숨김:</strong> <code>{"{{숨김:보여줄글씨|진짜내용}}"}</code></li>
+                                    <li><strong>표 (Table):</strong> <code>|| 항목1 || 항목2 ||</code> 줄바꿈</li>
                                     <li><strong>기본 스포일러:</strong> <code>{"{{스포일러:진짜내용}}"}</code></li>
                                     <li><strong>서식:</strong> <code>'''굵게'''</code> / <code>''기울임''</code> / <code>~~취소~~</code></li>
                                     <li><strong>여러줄 인용구:</strong> <code>&gt; 내용 적고 엔터 치다가 끝낼 때 &lt;</code></li>
@@ -1159,15 +1200,22 @@
                             <div className="flex-1 flex flex-col">
                                 <div className="flex justify-between items-center mb-1">
                                     <label className="block text-xs sm:text-sm font-bold text-gray-700">본문 내용</label>
-                                    {/* 🌟 수정됨: 보관함 열기로 변경 */}
-                                    <button 
-                                        onClick={() => openGallery({
-                                            action: (imgId) => setEditData(prev => ({ ...prev, content: (prev.content || "") + `\n[사진:${imgId}]\n` }))
-                                        })}
-                                        className="cursor-pointer text-xs bg-teal-100 hover:bg-teal-200 text-teal-800 px-2 py-1 rounded font-bold flex items-center gap-1 shadow-sm transition-colors"
-                                    >
-                                        <IconImage size={14} /> 보관함에서 본문 사진 넣기
-                                    </button>
+                                    <div className="flex gap-2">
+                                        <button 
+                                            onClick={() => setEditData(prev => ({ ...prev, content: (prev.content || "") + `\n|| 항목1 || 항목2 ||\n|| 내용1 || 내용2 ||\n` }))}
+                                            className="cursor-pointer text-xs bg-gray-100 hover:bg-gray-200 text-gray-800 px-2 py-1 rounded font-bold flex items-center gap-1 shadow-sm transition-colors border border-gray-300"
+                                        >
+                                            표(Table) 넣기
+                                        </button>
+                                        <button 
+                                            onClick={() => openGallery({
+                                                action: (imgId) => setEditData(prev => ({ ...prev, content: (prev.content || "") + `\n[사진:${imgId}]\n` }))
+                                            })}
+                                            className="cursor-pointer text-xs bg-teal-100 hover:bg-teal-200 text-teal-800 px-2 py-1 rounded font-bold flex items-center gap-1 shadow-sm transition-colors"
+                                        >
+                                            <IconImage size={14} /> 보관함 사진 넣기
+                                        </button>
+                                    </div>
                                 </div>
                                 <textarea value={editData.content || ""} onChange={(e) => handleChange('content', e.target.value)} className="w-full h-80 sm:h-96 p-3 border rounded focus:ring-2 ring-teal-400 outline-none font-mono text-xs sm:text-sm leading-relaxed"></textarea>
                             </div>
@@ -1175,96 +1223,103 @@
 
                         {!editData.isSystem && (
                             <div className="bg-gray-50 border border-gray-200 p-4 rounded h-fit">
-                                <h3 className="font-bold text-base sm:text-lg mb-4 border-b pb-2">프로필 박스 설정</h3>
-                                <div className="space-y-4">
-                                    
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 border border-gray-200 p-2 rounded bg-white">
-                                        <div>
-                                            <label className="block text-[10px] sm:text-xs font-bold text-gray-700 mb-1">테마 (프로필)</label>
-                                            <div className="flex gap-1">
-                                                <input type="color" value={editData.profileColor || "#475569"} onChange={(e) => handleChange('profileColor', e.target.value)} className="h-7 w-8 cursor-pointer p-0 border-0" />
-                                                <input type="text" value={editData.profileColor || "#475569"} onChange={(e) => handleChange('profileColor', e.target.value)} className="flex-1 p-1 border rounded text-xs" />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-[10px] sm:text-xs font-bold text-gray-700 mb-1">스포일러 글색</label>
-                                            <div className="flex gap-1">
-                                                <input type="color" value={editData.spoilerColor || "#0f766e"} onChange={(e) => handleChange('spoilerColor', e.target.value)} className="h-7 w-8 cursor-pointer p-0 border-0" />
-                                                <input type="text" value={editData.spoilerColor || "#0f766e"} onChange={(e) => handleChange('spoilerColor', e.target.value)} className="flex-1 p-1 border rounded text-xs" />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-[10px] sm:text-xs font-bold text-gray-700 mb-1">인용구 글색</label>
-                                            <div className="flex gap-1">
-                                                <input type="color" value={editData.quoteColor || "#374151"} onChange={(e) => handleChange('quoteColor', e.target.value)} className="h-7 w-8 cursor-pointer p-0 border-0" />
-                                                <input type="text" value={editData.quoteColor || "#374151"} onChange={(e) => handleChange('quoteColor', e.target.value)} className="flex-1 p-1 border rounded text-xs" />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-700 mb-1">영문 이름</label>
-                                        <input type="text" value={editData.engName || ""} onChange={(e) => handleChange('engName', e.target.value)} className="w-full p-1.5 border rounded text-sm" />
-                                    </div>
-
-                                    {/* 🌟 수정됨: 다중 프로필 사진 보관함 연동 */}
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-700 mb-1 flex justify-between items-center">
-                                            <span>프로필 사진 (보관함 연동)</span>
-                                            <button onClick={addProfileImage} className="text-teal-600 flex items-center hover:bg-teal-100 p-1 rounded"><IconPlus size={14} /> 추가</button>
-                                        </label>
-                                        <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                                            {(editData.profileImages || []).length === 0 && (
-                                                <div className="text-xs text-gray-500 bg-gray-100 p-2 rounded text-center">추가 버튼을 눌러 사진을 등록하세요.</div>
-                                            )}
-                                            {(editData.profileImages || []).map((imgObj, idx) => (
-                                                <div key={idx} className="border border-gray-200 p-2 rounded bg-gray-50 flex gap-1 sm:gap-2 items-start relative">
-                                                    <div className="flex flex-col gap-1 mt-1">
-                                                        <button onClick={() => moveProfileImageUp(idx)} disabled={idx === 0} className={`p-1 rounded ${idx === 0 ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-200'}`}><IconArrowUp size={14} /></button>
-                                                        <button onClick={() => moveProfileImageDown(idx)} disabled={idx === (editData.profileImages || []).length - 1} className={`p-1 rounded ${idx === (editData.profileImages || []).length - 1 ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-200'}`}><IconArrowDown size={14} /></button>
-                                                    </div>
-                                                    <div className="flex-1 flex flex-col gap-2">
-                                                        <button 
-                                                            onClick={() => openGallery({
-                                                                action: (imgId) => {
-                                                                    const newImgs = [...(editData.profileImages || [])];
-                                                                    newImgs[idx].url = imgId;
-                                                                    setEditData(prev => ({ ...prev, profileImages: newImgs }));
-                                                                }
-                                                            })}
-                                                            className="w-full text-xs bg-teal-100 hover:bg-teal-200 text-teal-800 py-1.5 px-2 rounded font-bold border border-teal-200 flex items-center justify-center gap-1"
-                                                        >
-                                                            <IconImage size={14}/> {imgObj.url ? '사진 변경' : '보관함 열기 및 사진 선택'}
-                                                        </button>
-                                                        <input type="text" placeholder="▲ 설명 (예: 1부 기본 복장)" value={imgObj.caption || ""} onChange={(e) => handleProfileImageChange(idx, 'caption', e.target.value)} className="w-full p-1.5 border rounded text-xs" />
-                                                    </div>
-                                                    {imgObj.url && <img src={resolveImg(imgObj.url, gallery)} alt="preview" className="h-12 w-12 object-contain bg-white border shrink-0" />}
-                                                    <button onClick={() => removeProfileImage(idx)} className="text-red-500 hover:bg-red-100 p-1.5 rounded mt-1 shrink-0"><IconTrash size={16} /></button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-700 mb-1 flex justify-between items-center">
-                                            <span>상세 정보 칸</span>
-                                            <button onClick={addAttribute} className="text-teal-600 flex items-center hover:bg-teal-100 p-1 rounded"><IconPlus size={14} /> 추가</button>
-                                        </label>
-                                        <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                                            {(editData.attributes || []).map((attr, idx) => (
-                                                <div key={idx} className="flex gap-1 items-start">
-                                                    <div className="flex flex-col sm:flex-row gap-0 sm:gap-1 mt-0.5">
-                                                        <button onClick={() => moveAttributeUp(idx)} disabled={idx === 0} className={`p-1 rounded ${idx === 0 ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-200'}`}><IconArrowUp size={14} /></button>
-                                                        <button onClick={() => moveAttributeDown(idx)} disabled={idx === (editData.attributes || []).length - 1} className={`p-1 rounded ${idx === (editData.attributes || []).length - 1 ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-200'}`}><IconArrowDown size={14} /></button>
-                                                    </div>
-                                                    <input type="text" placeholder="항목" value={attr.label || ""} onChange={(e) => handleAttributeChange(idx, 'label', e.target.value)} className="w-1/3 p-1.5 border rounded text-xs mt-0.5" />
-                                                    <input type="text" placeholder="내용" value={attr.value || ""} onChange={(e) => handleAttributeChange(idx, 'value', e.target.value)} className="flex-1 p-1.5 border rounded text-xs mt-0.5" />
-                                                    <button onClick={() => removeAttribute(idx)} className="text-red-500 p-1.5 hover:bg-red-50 rounded mt-0.5 shrink-0"><IconTrash size={14} /></button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
+                                <div className="flex justify-between items-center mb-4 border-b pb-2">
+                                    <h3 className="font-bold text-base sm:text-lg">프로필 박스 설정</h3>
+                                    <label className="flex items-center gap-1 cursor-pointer text-sm font-bold text-gray-700 bg-white px-2 py-1 border border-gray-300 rounded shadow-sm hover:bg-gray-100">
+                                        <input type="checkbox" checked={editData.hideProfile || false} onChange={(e) => handleChange('hideProfile', e.target.checked)} />
+                                        프로필 숨기기
+                                    </label>
                                 </div>
+                                
+                                {!editData.hideProfile && (
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 border border-gray-200 p-2 rounded bg-white">
+                                            <div>
+                                                <label className="block text-[10px] sm:text-xs font-bold text-gray-700 mb-1">테마 (프로필)</label>
+                                                <div className="flex gap-1">
+                                                    <input type="color" value={editData.profileColor || "#475569"} onChange={(e) => handleChange('profileColor', e.target.value)} className="h-7 w-8 cursor-pointer p-0 border-0" />
+                                                    <input type="text" value={editData.profileColor || "#475569"} onChange={(e) => handleChange('profileColor', e.target.value)} className="flex-1 p-1 border rounded text-xs" />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] sm:text-xs font-bold text-gray-700 mb-1">스포일러 글색</label>
+                                                <div className="flex gap-1">
+                                                    <input type="color" value={editData.spoilerColor || "#0f766e"} onChange={(e) => handleChange('spoilerColor', e.target.value)} className="h-7 w-8 cursor-pointer p-0 border-0" />
+                                                    <input type="text" value={editData.spoilerColor || "#0f766e"} onChange={(e) => handleChange('spoilerColor', e.target.value)} className="flex-1 p-1 border rounded text-xs" />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] sm:text-xs font-bold text-gray-700 mb-1">인용구 글색</label>
+                                                <div className="flex gap-1">
+                                                    <input type="color" value={editData.quoteColor || "#374151"} onChange={(e) => handleChange('quoteColor', e.target.value)} className="h-7 w-8 cursor-pointer p-0 border-0" />
+                                                    <input type="text" value={editData.quoteColor || "#374151"} onChange={(e) => handleChange('quoteColor', e.target.value)} className="flex-1 p-1 border rounded text-xs" />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-700 mb-1">영문 이름</label>
+                                            <input type="text" value={editData.engName || ""} onChange={(e) => handleChange('engName', e.target.value)} className="w-full p-1.5 border rounded text-sm" />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-700 mb-1 flex justify-between items-center">
+                                                <span>프로필 사진 (보관함 연동)</span>
+                                                <button onClick={addProfileImage} className="text-teal-600 flex items-center hover:bg-teal-100 p-1 rounded"><IconPlus size={14} /> 추가</button>
+                                            </label>
+                                            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                                                {(editData.profileImages || []).length === 0 && (
+                                                    <div className="text-xs text-gray-500 bg-gray-100 p-2 rounded text-center">추가 버튼을 눌러 사진을 등록하세요.</div>
+                                                )}
+                                                {(editData.profileImages || []).map((imgObj, idx) => (
+                                                    <div key={idx} className="border border-gray-200 p-2 rounded bg-gray-50 flex gap-1 sm:gap-2 items-start relative">
+                                                        <div className="flex flex-col gap-1 mt-1">
+                                                            <button onClick={() => moveProfileImageUp(idx)} disabled={idx === 0} className={`p-1 rounded ${idx === 0 ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-200'}`}><IconArrowUp size={14} /></button>
+                                                            <button onClick={() => moveProfileImageDown(idx)} disabled={idx === (editData.profileImages || []).length - 1} className={`p-1 rounded ${idx === (editData.profileImages || []).length - 1 ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-200'}`}><IconArrowDown size={14} /></button>
+                                                        </div>
+                                                        <div className="flex-1 flex flex-col gap-2">
+                                                            <button 
+                                                                onClick={() => openGallery({
+                                                                    action: (imgId) => {
+                                                                        const newImgs = [...(editData.profileImages || [])];
+                                                                        newImgs[idx].url = imgId;
+                                                                        setEditData(prev => ({ ...prev, profileImages: newImgs }));
+                                                                    }
+                                                                })}
+                                                                className="w-full text-xs bg-teal-100 hover:bg-teal-200 text-teal-800 py-1.5 px-2 rounded font-bold border border-teal-200 flex items-center justify-center gap-1"
+                                                            >
+                                                                <IconImage size={14}/> {imgObj.url ? '사진 변경' : '보관함 열기 및 선택'}
+                                                            </button>
+                                                            <input type="text" placeholder="▲ 설명 (예: 1부 기본 복장)" value={imgObj.caption || ""} onChange={(e) => handleProfileImageChange(idx, 'caption', e.target.value)} className="w-full p-1.5 border rounded text-xs" />
+                                                        </div>
+                                                        {imgObj.url && <img src={resolveImg(imgObj.url, gallery)} alt="preview" className="h-12 w-12 object-contain bg-white border shrink-0" />}
+                                                        <button onClick={() => removeProfileImage(idx)} className="text-red-500 hover:bg-red-100 p-1.5 rounded mt-1 shrink-0"><IconTrash size={16} /></button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-700 mb-1 flex justify-between items-center">
+                                                <span>상세 정보 칸</span>
+                                                <button onClick={addAttribute} className="text-teal-600 flex items-center hover:bg-teal-100 p-1 rounded"><IconPlus size={14} /> 추가</button>
+                                            </label>
+                                            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                                                {(editData.attributes || []).map((attr, idx) => (
+                                                    <div key={idx} className="flex gap-1 items-start">
+                                                        <div className="flex flex-col sm:flex-row gap-0 sm:gap-1 mt-0.5">
+                                                            <button onClick={() => moveAttributeUp(idx)} disabled={idx === 0} className={`p-1 rounded ${idx === 0 ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-200'}`}><IconArrowUp size={14} /></button>
+                                                            <button onClick={() => moveAttributeDown(idx)} disabled={idx === (editData.attributes || []).length - 1} className={`p-1 rounded ${idx === (editData.attributes || []).length - 1 ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-200'}`}><IconArrowDown size={14} /></button>
+                                                        </div>
+                                                        <input type="text" placeholder="항목" value={attr.label || ""} onChange={(e) => handleAttributeChange(idx, 'label', e.target.value)} className="w-1/3 p-1.5 border rounded text-xs mt-0.5" />
+                                                        <input type="text" placeholder="내용" value={attr.value || ""} onChange={(e) => handleAttributeChange(idx, 'value', e.target.value)} className="flex-1 p-1.5 border rounded text-xs mt-0.5" />
+                                                        <button onClick={() => removeAttribute(idx)} className="text-red-500 p-1.5 hover:bg-red-50 rounded mt-0.5 shrink-0"><IconTrash size={14} /></button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
