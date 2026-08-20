@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>개인 캐릭터 위키</title>
+    <!-- 🌟 타이틀과 파비콘은 리액트(React) 내부에서 동적으로 변경됩니다 -->
+    <title>로딩 중...</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
@@ -76,6 +77,21 @@
         const IconArrowUp = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>;
         const IconArrowDown = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>;
         const IconMoreVertical = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg>;
+        // 🌟 새로 추가된 '설정(톱니바퀴)' 아이콘
+        const IconSettings = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>;
+
+        // 🌟 위키 전체 설정 기본값
+        const DEFAULT_SETTINGS = {
+            siteIcon: "📚",
+            siteTitle: "나만의 위키",
+            tabTitle: "개인 캐릭터 위키",
+            faviconUrl: "",
+            loadingMessage: "📚 클라우드 위키 불러오는 중...",
+            promptEdit: "문서를 편집하려면 비밀번호를 입력하세요.",
+            promptNew: "새 문서를 생성하려면 비밀번호를 입력하세요.",
+            promptDelete: "정말 이 문서를 삭제하시겠습니까? 비밀번호를 입력하세요.",
+            promptSettings: "위키 전체 설정을 변경하려면 비밀번호를 입력하세요."
+        };
 
         const INITIAL_DATA = {
             "home": {
@@ -88,7 +104,6 @@
 
         const DEFAULT_DOC_TEMPLATE = "== 개요 ==\n여기에 개요를 작성하세요.\n\n== 상세 ==\n상세 내용을 작성하세요.\n\n== 작중 행적 ==\n[접기:행적 보기]\n[스포일러경고]\n행적을 작성하세요.\n[/접기]";
 
-        // 🌟 자음(초성) 추출 함수
         const getCho = (str) => {
             const cho = ["ㄱ","ㄲ","ㄴ","ㄷ","ㄸ","ㄹ","ㅁ","ㅂ","ㅃ","ㅅ","ㅆ","ㅇ","ㅈ","ㅉ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"];
             for(let i=0; i<str.length; i++) {
@@ -116,10 +131,32 @@
             const [showSearchRecs, setShowSearchRecs] = useState(false);
             const [showMoreMenu, setShowMoreMenu] = useState(false);
             const [galleryContext, setGalleryContext] = useState(null);
+            const [showSettingsModal, setShowSettingsModal] = useState(false); // 🌟 위키 설정 모달 상태
             const [isLoading, setIsLoading] = useState(true);
             const searchRef = useRef(null);
             const moreMenuRef = useRef(null);
             const [editData, setEditData] = useState(null);
+
+            // 현재 적용할 설정값 (DB에서 불러오기)
+            const settings = db._wikiSettings || DEFAULT_SETTINGS;
+
+            // 🌟 동적 타이틀 및 파비콘 변경 이펙트
+            useEffect(() => {
+                document.title = settings.tabTitle || DEFAULT_SETTINGS.tabTitle;
+                
+                if (settings.faviconUrl) {
+                    let link = document.querySelector("link[rel~='icon']");
+                    if (!link) {
+                        link = document.createElement('link');
+                        link.rel = 'icon';
+                        document.head.appendChild(link);
+                    }
+                    link.href = settings.faviconUrl;
+                }
+                
+                // 로딩 창을 위해 로컬 스토리지에 세팅 복사본 저장
+                localStorage.setItem('cachedWikiSettings', JSON.stringify(settings));
+            }, [settings]);
 
             useEffect(() => {
                 if (!isFirebaseConfigured) {
@@ -185,9 +222,10 @@
             const isCategoryView = currentDocId.startsWith('category:');
             const currentCategoryName = isCategoryView ? decodeURIComponent(currentDocId.replace('category:', '')) : '';
 
+            // 🌟 모든 비밀번호 프롬프트에 커스텀 메시지 적용
             const startEditing = () => {
-                const pass = prompt("문서를 편집하려면 비밀번호를 입력하세요.");
-                if (pass !== '0201') { alert("비밀번호가 틀렸습니다."); return; }
+                const pass = prompt(settings.promptEdit || DEFAULT_SETTINGS.promptEdit);
+                if (pass !== '0201') { if(pass !== null) alert("비밀번호가 틀렸습니다."); return; }
                 
                 let profileImgs = currentDoc.profileImages || [];
                 if (profileImgs.length === 0 && currentDoc.image) {
@@ -205,8 +243,8 @@
             };
 
             const createNewDoc = () => {
-                const pass = prompt("새 문서를 생성하려면 비밀번호를 입력하세요.");
-                if (pass !== '0201') return;
+                const pass = prompt(settings.promptNew || DEFAULT_SETTINGS.promptNew);
+                if (pass !== '0201') { if(pass !== null) alert("비밀번호가 틀렸습니다."); return; }
                 
                 const newId = `doc_${Date.now()}`;
                 const newDoc = {
@@ -225,12 +263,24 @@
 
             const deleteDoc = (docId) => {
                 if (db[docId] && db[docId].isSystem) { alert("대문은 삭제할 수 없습니다."); return; }
-                const pass = prompt("정말 이 문서를 삭제하시겠습니까? 비밀번호를 입력하세요.");
+                const pass = prompt(settings.promptDelete || DEFAULT_SETTINGS.promptDelete);
                 if (pass === '0201') {
                     const newDb = { ...db };
                     delete newDb[docId];
                     handleSaveData(newDb);
                     window.location.hash = 'home';
+                } else if(pass !== null) {
+                    alert("비밀번호가 틀렸습니다.");
+                }
+            };
+
+            const openSettingsCheck = () => {
+                setShowMoreMenu(false);
+                const pass = prompt(settings.promptSettings || DEFAULT_SETTINGS.promptSettings);
+                if (pass === '0201') {
+                    setShowSettingsModal(true);
+                } else if(pass !== null) {
+                    alert("비밀번호가 틀렸습니다.");
                 }
             };
 
@@ -252,7 +302,7 @@
                         if (imported && imported.home) {
                             handleSaveData(imported);
                             window.location.hash = 'home';
-                            alert("구글 서버로 데이터가 완벽하게 복구(업로드) 되었습니다!");
+                            alert("데이터가 완벽하게 복구(업로드) 되었습니다!");
                         } else alert("올바르지 않은 데이터 형식입니다.");
                     } catch (err) { alert("파일을 읽는 중 오류가 발생했습니다."); }
                 };
@@ -260,9 +310,13 @@
             };
 
             if (isLoading) {
+                // 🌟 로딩 중에는 로컬에 저장된 세팅값을 우선으로 보여줌
+                const cached = localStorage.getItem('cachedWikiSettings');
+                const initialSettings = cached ? JSON.parse(cached) : DEFAULT_SETTINGS;
+                const loadingMsg = initialSettings.loadingMessage || DEFAULT_SETTINGS.loadingMessage;
                 return (
                     <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                        <div className="text-xl font-bold text-teal-700 animate-pulse">📚 클라우드 위키 불러오는 중...</div>
+                        <div className="text-xl font-bold text-teal-700 animate-pulse">{loadingMsg}</div>
                     </div>
                 );
             }
@@ -271,9 +325,10 @@
                 <div className="min-h-screen bg-gray-50 text-gray-800 font-sans pb-10">
                     <header className="bg-teal-700 text-white shadow-md sticky top-0 z-50">
                         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+                            {/* 🌟 동적으로 변경되는 상단바 아이콘 및 타이틀 */}
                             <div className="text-xl font-bold cursor-pointer flex items-center gap-2" onClick={() => navigateTo('home')}>
-                                <span className="text-2xl">📚</span>
-                                <span>나만의 위키</span>
+                                <span className="text-2xl">{settings.siteIcon}</span>
+                                <span>{settings.siteTitle}</span>
                             </div>
                             
                             <div className="flex items-center gap-2 sm:gap-4">
@@ -291,7 +346,7 @@
                                     {showSearchRecs && searchQuery && (
                                         <div className="absolute top-full right-0 mt-1 w-48 sm:w-full bg-white text-gray-800 shadow-lg rounded border border-gray-200 max-h-60 overflow-y-auto z-50">
                                             {Object.values(db)
-                                                .filter(doc => doc.title && doc.id !== '_gallery')
+                                                .filter(doc => doc.title && doc.id !== '_gallery' && doc.id !== '_wikiSettings')
                                                 .filter(doc => {
                                                     const fullTitle = doc.subtitle ? `${doc.title} (${doc.subtitle})` : (doc.title || "");
                                                     return fullTitle.toLowerCase().includes(searchQuery.toLowerCase());
@@ -314,9 +369,10 @@
                                     {showMoreMenu && (
                                         <div className="absolute top-full right-0 mt-2 w-48 bg-white text-gray-800 shadow-xl border border-gray-200 rounded overflow-hidden z-[100]">
                                             <button onClick={() => { setShowMoreMenu(false); setGalleryContext({ action: null }); }} className="w-full text-left px-4 py-3 hover:bg-teal-50 border-b border-gray-100 flex items-center gap-2 text-sm font-medium"><IconImage size={16} className="text-teal-600"/> 사진 보관함</button>
-                                            <button onClick={() => { setShowMoreMenu(false); exportData(); }} className="w-full text-left px-4 py-3 hover:bg-teal-50 border-b border-gray-100 flex items-center gap-2 text-sm font-medium"><IconDownload size={16} className="text-teal-600"/> 백업 (저장)</button>
+                                            <button onClick={openSettingsCheck} className="w-full text-left px-4 py-3 hover:bg-teal-50 border-b border-gray-100 flex items-center gap-2 text-sm font-medium"><IconSettings size={16} className="text-teal-600"/> 위키 전체 설정</button>
+                                            <button onClick={() => { setShowMoreMenu(false); exportData(); }} className="w-full text-left px-4 py-3 hover:bg-teal-50 border-b border-gray-100 flex items-center gap-2 text-sm font-medium"><IconDownload size={16} className="text-teal-600"/> 전체 백업 (다운로드)</button>
                                             <label className="w-full text-left px-4 py-3 hover:bg-teal-50 flex items-center gap-2 cursor-pointer text-sm font-medium">
-                                                <IconUpload size={16} className="text-teal-600"/> 복구 (불러오기)
+                                                <IconUpload size={16} className="text-teal-600"/> 백업 파일 복구
                                                 <input type="file" accept=".json" className="hidden" onChange={(e) => { setShowMoreMenu(false); importData(e); }} />
                                             </label>
                                         </div>
@@ -357,11 +413,110 @@
                             onClose={() => setGalleryContext(null)} 
                         />
                     )}
+
+                    {/* 🌟 위키 설정 모달창 */}
+                    {showSettingsModal && (
+                        <SettingsModal 
+                            db={db} 
+                            handleSaveData={handleSaveData} 
+                            onClose={() => setShowSettingsModal(false)} 
+                            openGallery={setGalleryContext}
+                        />
+                    )}
                 </div>
             );
         }
 
-        // 🌟 분류(카테고리) 모아보기 컴포넌트
+        // 🌟 위키 전체 설정 모달 컴포넌트 추가
+        function SettingsModal({ db, handleSaveData, onClose, openGallery }) {
+            const [formData, setFormData] = useState(db._wikiSettings || DEFAULT_SETTINGS);
+
+            const handleChange = (field, value) => {
+                setFormData(prev => ({ ...prev, [field]: value }));
+            };
+
+            const handleSave = () => {
+                const newDb = { ...db, _wikiSettings: formData };
+                handleSaveData(newDb);
+                onClose();
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black/70 z-[250] flex items-center justify-center p-2 sm:p-4">
+                    <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
+                        <div className="flex justify-between items-center p-4 border-b">
+                            <h2 className="text-xl font-bold flex items-center gap-2"><IconSettings size={24} className="text-teal-600"/> 위키 전체 설정</h2>
+                            <button onClick={onClose} className="text-gray-500 hover:text-gray-800 bg-gray-100 rounded-full p-1"><IconX size={20}/></button>
+                        </div>
+                        
+                        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+                            
+                            <div className="border border-gray-200 p-4 rounded bg-gray-50">
+                                <h3 className="font-bold text-gray-800 mb-3 border-b pb-2">1. 메인 디자인 설정</h3>
+                                <div className="space-y-3">
+                                    <div className="flex gap-2">
+                                        <div className="w-16">
+                                            <label className="block text-xs font-bold text-gray-700 mb-1">상단 아이콘</label>
+                                            <input type="text" value={formData.siteIcon} onChange={e => handleChange('siteIcon', e.target.value)} className="w-full p-2 border rounded outline-none text-center" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <label className="block text-xs font-bold text-gray-700 mb-1">상단바 위키 제목</label>
+                                            <input type="text" value={formData.siteTitle} onChange={e => handleChange('siteTitle', e.target.value)} className="w-full p-2 border rounded outline-none" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 mb-1">브라우저 탭 이름 (웹문서 타이틀)</label>
+                                        <input type="text" value={formData.tabTitle} onChange={e => handleChange('tabTitle', e.target.value)} className="w-full p-2 border rounded outline-none" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 mb-1">브라우저 탭 아이콘 (파비콘 URL)</label>
+                                        <div className="flex gap-2 items-center">
+                                            <input type="text" value={formData.faviconUrl} onChange={e => handleChange('faviconUrl', e.target.value)} placeholder="이미지 주소 또는 보관함에서 선택" className="flex-1 p-2 border rounded outline-none text-xs sm:text-sm" />
+                                            <button 
+                                                onClick={() => openGallery({ action: (id) => handleChange('faviconUrl', db._gallery[id] || '') })}
+                                                className="shrink-0 bg-teal-100 hover:bg-teal-200 text-teal-800 text-xs px-2 py-2 rounded font-bold border border-teal-200"
+                                            >보관함에서 찾기</button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 mb-1">로딩 화면 문구</label>
+                                        <input type="text" value={formData.loadingMessage} onChange={e => handleChange('loadingMessage', e.target.value)} className="w-full p-2 border rounded outline-none" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="border border-gray-200 p-4 rounded bg-gray-50">
+                                <h3 className="font-bold text-gray-800 mb-3 border-b pb-2">2. 안내 문구 (비밀번호 확인창) 커스텀</h3>
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 mb-1">기존 문서 '편집' 시 문구</label>
+                                        <input type="text" value={formData.promptEdit} onChange={e => handleChange('promptEdit', e.target.value)} className="w-full p-2 border rounded outline-none text-sm" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 mb-1">'새 문서 생성' 시 문구</label>
+                                        <input type="text" value={formData.promptNew} onChange={e => handleChange('promptNew', e.target.value)} className="w-full p-2 border rounded outline-none text-sm" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 mb-1">문서 '삭제' 시 문구</label>
+                                        <input type="text" value={formData.promptDelete} onChange={e => handleChange('promptDelete', e.target.value)} className="w-full p-2 border rounded outline-none text-sm" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 mb-1">'위키 설정' 진입 시 문구</label>
+                                        <input type="text" value={formData.promptSettings} onChange={e => handleChange('promptSettings', e.target.value)} className="w-full p-2 border rounded outline-none text-sm" />
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                        <div className="p-4 border-t flex justify-end gap-2 bg-gray-100 rounded-b-lg">
+                            <button onClick={onClose} className="btn-secondary">취소</button>
+                            <button onClick={handleSave} className="btn-primary">변경사항 저장</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
         function CategoryView({ categoryName, db, navigateTo }) {
             const docs = Object.values(db).filter(d => !d.isSystem && d.categories && d.categories.split(',').map(s=>s.trim()).includes(categoryName));
             
@@ -506,14 +661,12 @@
             return url;
         };
 
-        // 🌟 개선된 표(Table) 렌더링 컴포넌트
         function WikiTable({ rows, navigateTo, footnotes, contentImages, docColors, gallery }) {
             return (
                 <div className="overflow-x-auto my-4 w-full">
                     <table className="border-collapse border border-gray-300 w-full text-sm">
                         <tbody>
                             {rows.map((row, rIdx) => {
-                                // 텍스트 호환성 처리 (|| 내용 ||)
                                 let cells = row;
                                 if (typeof row === 'string') {
                                     cells = row.slice(2, -2).split('||').map(c => c.trim());
@@ -603,7 +756,6 @@
                             <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">{doc.title}</h1>
                         </div>
                         
-                        {/* 🌟 수정됨: 왼쪽 정렬된 수정 시각 */}
                         <div className="text-left text-xs text-gray-500 mb-3 font-medium">
                             최근 수정 시각: {doc.lastModified ? (() => {
                                 const d = new Date(doc.lastModified);
@@ -618,7 +770,6 @@
                                 <ul className="flex flex-wrap m-0 p-0 list-none items-center">
                                     {doc.categories.split(',').filter(c => c.trim()).map((c, i, arr) => (
                                         <li key={i} className="flex items-center">
-                                            {/* 🌟 수정됨: 분류 클릭 시 모아보기 화면으로 이동 */}
                                             <a href={`#category:${c.trim()}`} onClick={(e) => { e.preventDefault(); navigateTo(`category:${c.trim()}`); }} className="text-teal-700 font-medium hover:underline cursor-pointer">
                                                 {c.trim()}
                                             </a>
@@ -713,7 +864,6 @@
                                 </div>
                             ) : null}
                             
-                            {/* 🌟 렌더러에 테이블 정보 전달 */}
                             <div className="wiki-content">
                                 <WikiRenderer content={parsedContent} navigateTo={navigateTo} globalFootnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} gallery={gallery} tables={doc.tables || []} />
                             </div>
@@ -837,7 +987,6 @@
                     continue;
                 }
                 
-                // 🌟 예전 방식의 수동 텍스트 표 파싱 유지 (하위 호환)
                 if (line.startsWith('||') && line.endsWith('||')) {
                     inTable = true;
                     tableRows.push(line);
@@ -848,7 +997,6 @@
                     tableRows = [];
                 }
 
-                // 🌟 새 방식의 [표:idx] 태그를 만났을 때 렌더링
                 const guiTableMatch = line.match(/^\[표:(\d+)\]$/);
                 if (guiTableMatch) {
                     const tIdx = parseInt(guiTableMatch[1], 10);
@@ -1222,7 +1370,6 @@
                 handleChange('attributes', newAttrs);
             };
 
-            // 🌟 표 편집(GUI) 관련 함수들
             const addTable = () => handleChange('tables', [...(editData.tables || []), { rows: [['항목1', '항목2'], ['내용1', '내용2']] }]);
             const removeTable = (tIdx) => handleChange('tables', (editData.tables || []).filter((_, i) => i !== tIdx));
             const addRow = (tIdx) => {
@@ -1274,8 +1421,6 @@
                 <div className="flex flex-col gap-4 relative">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-2">
                         <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2"><IconEdit className="text-teal-600" /> 문서 편집</h2>
-                        
-                        {/* 🌟 수정됨: 삭제 버튼을 좌측/중앙에 배치하고, 나머지 버튼은 우측에 묶음 */}
                         <div className="flex gap-2 w-full sm:w-auto justify-end items-center flex-wrap">
                             {!editData.isSystem && (
                                 <button onClick={onDelete} className="text-red-500 hover:text-red-700 text-sm flex items-center gap-1 mr-auto sm:mr-4 border border-red-200 px-2 py-1 rounded bg-red-50">
@@ -1331,7 +1476,6 @@
                                 <input type="text" placeholder="예: 자캐, 평행우주, 뱀파이어" value={editData.categories || ""} onChange={(e) => handleChange('categories', e.target.value)} className="w-full p-2 border rounded focus:ring-2 ring-teal-400 outline-none text-sm" />
                             </div>
 
-                            {/* 🌟 표(Table) GUI 에디터 구역 추가 */}
                             <div className="border border-gray-200 p-4 rounded bg-gray-50 mb-2">
                                 <div className="flex justify-between items-center mb-2">
                                     <h3 className="font-bold text-gray-800 text-sm sm:text-base">표(Table) 에디터</h3>
