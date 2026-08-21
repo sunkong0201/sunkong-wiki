@@ -1060,9 +1060,6 @@
             let isQuote = false;
             let quoteLines = [];
 
-            let inTable = false;
-            let tableRows = [];
-
             for (let i = 0; i < lines.length; i++) {
                 const rawLine = lines[i];
                 const line = rawLine.trim();
@@ -1511,6 +1508,20 @@
                 handleChange('tables', newTables);
             };
 
+            const handleContentImageUpload = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        const currentImages = editData.contentImages || [];
+                        const newImages = [...currentImages, reader.result];
+                        handleChange('contentImages', newImages);
+                        handleChange('content', (editData.content || "") + `\n[본문사진:${newImages.length - 1}]\n`);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
             return (
                 <div className="flex flex-col gap-4 relative">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-2">
@@ -1527,27 +1538,31 @@
                         </div>
                     </div>
 
+                    {/* 🌟 수정됨: 도움말에 유튜브 상세 안내 추가 */}
                     {showHelp && (
                         <div className="bg-teal-50 border border-teal-200 p-4 rounded text-xs sm:text-sm text-teal-900 mb-2 overflow-x-auto">
-                            <h4 className="font-bold mb-2">💡 위키 문법 도움말</h4>
+                            <h4 className="font-bold mb-2 flex items-center gap-1">💡 위키 문법 도움말</h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                                <ul className="list-disc pl-5 space-y-1">
-                                    <li><strong>문서 링크:</strong> <code>[[문서ID|표시할이름]]</code></li>
-                                    <li><strong>상위 단락:</strong> <code>== 단락 이름 ==</code></li>
-                                    <li><strong>하위 단락:</strong> <code>=== 단락 이름 ===</code></li>
+                                <ul className="list-disc pl-5 space-y-2">
+                                    <li><strong>문서 링크:</strong> <code>[[문서ID|표시이름]]</code></li>
+                                    <li><strong>상/하위 단락:</strong> <code>== 이름 ==</code>, <code>=== 이름 ===</code></li>
                                     <li><strong>서식:</strong> <code>'''굵게'''</code> / <code>''기울임''</code> / <code>~~취소선~~</code></li>
                                 </ul>
-                                <ul className="list-disc pl-5 space-y-1">
+                                <ul className="list-disc pl-5 space-y-2">
                                     <li><strong>인용구:</strong> <code>&gt; 내용 적고 마지막 줄에 &lt;</code></li>
                                     <li><strong>플로팅 주석:</strong> <code>[* 주석 내용]</code></li>
                                     <li><strong>내용 접기:</strong> <code>[접기:제목]</code> 내용 <code>[/접기]</code></li>
-                                    <li><strong>글자 스포일러:</strong> <code>{"{{스포일러:내용}}"}</code></li>
                                 </ul>
-                                <ul className="list-disc pl-5 space-y-1">
-                                    <li><strong>유튜브:</strong> <code>[유튜브:영상ID]</code> (v= 뒤의 주소)</li>
-                                    <li><strong>경고 박스:</strong> <code>[스포일러경고]</code> (문서 하단 경고용)</li>
+                                <ul className="list-disc pl-5 space-y-2">
+                                    <li>
+                                        <strong>유튜브:</strong> <code>[유튜브:11자리ID]</code><br/>
+                                        <span className="text-[10px] text-teal-700 leading-tight block mt-0.5">
+                                            - PC: 주소창 <code>v=</code> 뒤 11글자<br/>
+                                            - 앱: 공유링크 <code>youtu.be/</code> 뒤 11글자
+                                        </span>
+                                    </li>
+                                    <li><strong>경고 박스:</strong> <code>[스포일러경고]</code></li>
                                     <li><strong>맞춤 숨김:</strong> <code>{"{{숨김:보여줄글씨|진짜내용}}"}</code></li>
-                                    <li><strong>표/사진:</strong> 에디터의 [표 넣기], 보관함 활용</li>
                                 </ul>
                             </div>
                         </div>
