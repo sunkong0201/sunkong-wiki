@@ -88,7 +88,9 @@
             promptEdit: "문서를 편집하려면 비밀번호를 입력하세요.",
             promptNew: "새 문서를 생성하려면 비밀번호를 입력하세요.",
             promptDelete: "정말 이 문서를 삭제하시겠습니까? 비밀번호를 입력하세요.",
-            promptSettings: "위키 전체 설정을 변경하려면 비밀번호를 입력하세요."
+            promptSettings: "위키 전체 설정을 변경하려면 비밀번호를 입력하세요.",
+            spoilerWarningTitle: "⚠️ 주의사항",
+            spoilerWarningText: "이 문서 하단에는 치명적인 스포일러가 포함되어 있습니다."
         };
 
         const INITIAL_DATA = {
@@ -100,7 +102,7 @@
             }
         };
 
-        const DEFAULT_DOC_TEMPLATE = "== 개요 ==\n여기에 개요를 작성하세요.\n\n== 상세 ==\n상세 내용을 작성하세요.\n\n== 작중 행적 ==\n[접기:행적 보기]\n[스포일러경고]\n행적을 작성하세요.\n[/접기]";
+        const DEFAULT_DOC_TEMPLATE = "== 개요 ==\n여기에 개요를 작성하세요.\n\n== 상세 ==\n상세 내용을 작성하세요.\n\n== 작중 행적 == [접기]\n[스포일러경고]\n행적을 작성하세요.";
 
         const getCho = (str) => {
             const cho = ["ㄱ","ㄲ","ㄴ","ㄷ","ㄸ","ㄹ","ㅁ","ㅂ","ㅃ","ㅅ","ㅆ","ㅇ","ㅈ","ㅉ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"];
@@ -440,7 +442,7 @@
                         ) : isCategoryView ? (
                             <CategoryView categoryName={currentCategoryName} db={db} navigateTo={navigateTo} />
                         ) : (
-                            <DocumentView doc={currentDoc} navigateTo={navigateTo} gallery={db._gallery || {}} />
+                            <DocumentView doc={currentDoc} navigateTo={navigateTo} gallery={db._gallery || {}} settings={settings} />
                         )}
                     </main>
 
@@ -553,21 +555,21 @@
                                     <div className="flex gap-2">
                                         <div className="w-16">
                                             <label className="block text-xs font-bold text-gray-700 mb-1">상단 아이콘</label>
-                                            <input type="text" value={formData.siteIcon} onChange={e => handleChange('siteIcon', e.target.value)} className="w-full p-2 border rounded outline-none text-center" />
+                                            <input type="text" value={formData.siteIcon || ''} onChange={e => handleChange('siteIcon', e.target.value)} className="w-full p-2 border rounded outline-none text-center" />
                                         </div>
                                         <div className="flex-1">
                                             <label className="block text-xs font-bold text-gray-700 mb-1">상단바 위키 제목</label>
-                                            <input type="text" value={formData.siteTitle} onChange={e => handleChange('siteTitle', e.target.value)} className="w-full p-2 border rounded outline-none" />
+                                            <input type="text" value={formData.siteTitle || ''} onChange={e => handleChange('siteTitle', e.target.value)} className="w-full p-2 border rounded outline-none" />
                                         </div>
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-gray-700 mb-1">브라우저 탭 이름 (웹문서 타이틀)</label>
-                                        <input type="text" value={formData.tabTitle} onChange={e => handleChange('tabTitle', e.target.value)} className="w-full p-2 border rounded outline-none" />
+                                        <input type="text" value={formData.tabTitle || ''} onChange={e => handleChange('tabTitle', e.target.value)} className="w-full p-2 border rounded outline-none" />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-gray-700 mb-1">브라우저 탭 아이콘 (파비콘 URL)</label>
                                         <div className="flex gap-2 items-center">
-                                            <input type="text" value={formData.faviconUrl} onChange={e => handleChange('faviconUrl', e.target.value)} placeholder="이미지 주소 또는 보관함에서 선택" className="flex-1 p-2 border rounded outline-none text-xs sm:text-sm" />
+                                            <input type="text" value={formData.faviconUrl || ''} onChange={e => handleChange('faviconUrl', e.target.value)} placeholder="이미지 주소 또는 보관함에서 선택" className="flex-1 p-2 border rounded outline-none text-xs sm:text-sm" />
                                             <button 
                                                 onClick={() => openGallery({ action: (id) => handleChange('faviconUrl', db._gallery[id] || '') })}
                                                 className="shrink-0 bg-teal-100 hover:bg-teal-200 text-teal-800 text-xs px-2 py-2 rounded font-bold border border-teal-200"
@@ -576,29 +578,43 @@
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-gray-700 mb-1">로딩 화면 문구</label>
-                                        <input type="text" value={formData.loadingMessage} onChange={e => handleChange('loadingMessage', e.target.value)} className="w-full p-2 border rounded outline-none" />
+                                        <input type="text" value={formData.loadingMessage || ''} onChange={e => handleChange('loadingMessage', e.target.value)} className="w-full p-2 border rounded outline-none" />
                                     </div>
                                 </div>
                             </div>
 
                             <div className="border border-gray-200 p-4 rounded bg-gray-50">
-                                <h3 className="font-bold text-gray-800 mb-3 border-b pb-2">2. 안내 문구 (비밀번호 확인창) 커스텀</h3>
+                                <h3 className="font-bold text-gray-800 mb-3 border-b pb-2">2. 안내 문구 (비밀번호 창) 커스텀</h3>
                                 <div className="space-y-3">
                                     <div>
                                         <label className="block text-xs font-bold text-gray-700 mb-1">기존 문서 '편집' 시 문구</label>
-                                        <input type="text" value={formData.promptEdit} onChange={e => handleChange('promptEdit', e.target.value)} className="w-full p-2 border rounded outline-none text-sm" />
+                                        <input type="text" value={formData.promptEdit || ''} onChange={e => handleChange('promptEdit', e.target.value)} className="w-full p-2 border rounded outline-none text-sm" />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-gray-700 mb-1">'새 문서 생성' 시 문구</label>
-                                        <input type="text" value={formData.promptNew} onChange={e => handleChange('promptNew', e.target.value)} className="w-full p-2 border rounded outline-none text-sm" />
+                                        <input type="text" value={formData.promptNew || ''} onChange={e => handleChange('promptNew', e.target.value)} className="w-full p-2 border rounded outline-none text-sm" />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-gray-700 mb-1">문서 '삭제' 시 문구</label>
-                                        <input type="text" value={formData.promptDelete} onChange={e => handleChange('promptDelete', e.target.value)} className="w-full p-2 border rounded outline-none text-sm" />
+                                        <input type="text" value={formData.promptDelete || ''} onChange={e => handleChange('promptDelete', e.target.value)} className="w-full p-2 border rounded outline-none text-sm" />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-gray-700 mb-1">'위키 설정' 진입 시 문구</label>
-                                        <input type="text" value={formData.promptSettings} onChange={e => handleChange('promptSettings', e.target.value)} className="w-full p-2 border rounded outline-none text-sm" />
+                                        <input type="text" value={formData.promptSettings || ''} onChange={e => handleChange('promptSettings', e.target.value)} className="w-full p-2 border rounded outline-none text-sm" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="border border-gray-200 p-4 rounded bg-gray-50">
+                                <h3 className="font-bold text-gray-800 mb-3 border-b pb-2">3. 스포일러 경고창 커스텀</h3>
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 mb-1">경고창 제목</label>
+                                        <input type="text" value={formData.spoilerWarningTitle || ''} onChange={e => handleChange('spoilerWarningTitle', e.target.value)} className="w-full p-2 border rounded outline-none text-sm" placeholder="예: ⚠️ 주의사항" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 mb-1">경고창 상세 내용</label>
+                                        <textarea value={formData.spoilerWarningText || ''} onChange={e => handleChange('spoilerWarningText', e.target.value)} className="w-full p-2 border rounded outline-none text-sm h-16 resize-y" placeholder="예: 이 문서 하단에는 치명적인 스포일러가 포함되어 있습니다."></textarea>
                                     </div>
                                 </div>
                             </div>
@@ -792,7 +808,7 @@
             );
         }
 
-        function DocumentView({ doc, navigateTo, gallery }) {
+        function DocumentView({ doc, navigateTo, gallery, settings }) {
             const docColors = {
                 profileColor: doc.profileColor || '#475569',
                 spoilerColor: doc.spoilerColor || '#0f766e',
@@ -823,27 +839,22 @@
             });
 
             const headings = [];
-            let isFolding = false;
             let mainCount = 0;
             let subCount = 0;
             let globalIndex = 0;
             
             parsedContent.split('\n').forEach((line) => {
                 const rawLine = line.trim();
-                if (rawLine.match(/^\[접기:(.+?)\]$/)) isFolding = true;
-                if (rawLine === '[\/접기]') isFolding = false;
-                
-                if (!isFolding) {
-                    const match = rawLine.match(/^(==+)\s+(.+?)\s+\1$/);
-                    if (match && match[1].length <= 3) {
-                        const level = match[1].length;
-                        let numStr = "";
-                        if (level === 2) { mainCount++; subCount = 0; numStr = `${mainCount}.`; }
-                        else if (level === 3) { subCount++; numStr = `${mainCount}.${subCount}.`; }
-                        
-                        headings.push({ level, title: match[2], numStr, id: `heading-${globalIndex}` });
-                        globalIndex++;
-                    }
+                // 목차에는 [접기] 글씨가 나오지 않도록 정규식 처리
+                const match = rawLine.match(/^(==+)\s+(.+?)\s+\1(\s+\[접기\])?$/);
+                if (match && match[1].length <= 3) {
+                    const level = match[1].length;
+                    let numStr = "";
+                    if (level === 2) { mainCount++; subCount = 0; numStr = `${mainCount}.`; }
+                    else if (level === 3) { subCount++; numStr = `${mainCount}.${subCount}.`; }
+                    
+                    headings.push({ level, title: match[2], numStr, id: `heading-${globalIndex}` });
+                    globalIndex++;
                 }
             });
 
@@ -966,7 +977,7 @@
                             ) : null}
                             
                             <div className="wiki-content">
-                                <WikiRenderer content={parsedContent} navigateTo={navigateTo} globalFootnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} gallery={gallery} tables={doc.tables || []} />
+                                <WikiRenderer docId={doc.id} content={parsedContent} navigateTo={navigateTo} globalFootnotes={globalFootnotes} contentImages={doc.contentImages || []} docColors={docColors} gallery={gallery} tables={doc.tables || []} settings={settings} />
                             </div>
                         </div>
                     </div>
@@ -974,22 +985,15 @@
             );
         }
 
-        function SectionBlock({ section, navigateTo, footnotes, contentImages, docColors, gallery, tables }) {
-            const [isOpen, setIsOpen] = useState(true);
-            if (!section.heading) {
-                return (
-                    <div>
-                        {renderLines(section.lines, navigateTo, footnotes, contentImages, docColors, gallery, tables)}
-                        {section.subSections.map((sub, idx) => (
-                            <SubSectionBlock key={idx} subSection={sub} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} tables={tables} />
-                        ))}
-                    </div>
-                );
-            }
+        function SectionBlock({ section, navigateTo, footnotes, contentImages, docColors, gallery, tables, settings }) {
+            // 🌟 [접기] 표시에 따라 기본 열림/닫힘 상태 설정
+            const [isOpen, setIsOpen] = useState(!section.isDefaultFolded);
+            
             return (
                 <div className="mb-8">
+                    {/* 🌟 닫혀있을 때 반투명(opacity-50) 스타일 적용 */}
                     <div 
-                        className="flex items-center border-b-2 border-gray-300 pb-1 mt-8 mb-4 cursor-pointer hover:bg-gray-50 transition-colors select-none group scroll-mt-20"
+                        className={`flex items-center border-b-2 border-gray-300 pb-1 mt-8 mb-4 cursor-pointer hover:bg-gray-50 transition-all duration-200 select-none group scroll-mt-20 ${!isOpen ? 'opacity-50' : 'opacity-100'}`}
                         onClick={() => setIsOpen(!isOpen)}
                         title={isOpen ? "클릭하여 단락 접기" : "클릭하여 단락 펼치기"}
                         id={section.id}
@@ -999,9 +1003,9 @@
                     </div>
                     <div style={{ display: isOpen ? 'block' : 'none' }}>
                         <div className="pl-1 sm:pl-2">
-                            {renderLines(section.lines, navigateTo, footnotes, contentImages, docColors, gallery, tables)}
+                            {renderLines(section.lines, navigateTo, footnotes, contentImages, docColors, gallery, tables, settings)}
                             {section.subSections.map((sub, idx) => (
-                                <SubSectionBlock key={idx} subSection={sub} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} tables={tables} />
+                                <SubSectionBlock key={idx} subSection={sub} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} tables={tables} settings={settings} />
                             ))}
                         </div>
                     </div>
@@ -1009,12 +1013,13 @@
             );
         }
 
-        function SubSectionBlock({ subSection, navigateTo, footnotes, contentImages, docColors, gallery, tables }) {
-            const [isOpen, setIsOpen] = useState(true);
+        function SubSectionBlock({ subSection, navigateTo, footnotes, contentImages, docColors, gallery, tables, settings }) {
+            const [isOpen, setIsOpen] = useState(!subSection.isDefaultFolded);
+            
             return (
                 <div className="mb-4 mt-6">
                     <div 
-                        className="flex items-center border-b border-gray-200 pb-1 mb-3 cursor-pointer hover:bg-gray-50 transition-colors select-none group scroll-mt-20"
+                        className={`flex items-center border-b border-gray-200 pb-1 mb-3 cursor-pointer hover:bg-gray-50 transition-all duration-200 select-none group scroll-mt-20 ${!isOpen ? 'opacity-50' : 'opacity-100'}`}
                         onClick={() => setIsOpen(!isOpen)}
                         title={isOpen ? "클릭하여 단락 접기" : "클릭하여 단락 펼치기"}
                         id={subSection.id}
@@ -1024,67 +1029,35 @@
                     </div>
                     <div style={{ display: isOpen ? 'block' : 'none' }}>
                         <div className="pl-1 sm:pl-2">
-                            {renderLines(subSection.lines, navigateTo, footnotes, contentImages, docColors, gallery, tables)}
+                            {renderLines(subSection.lines, navigateTo, footnotes, contentImages, docColors, gallery, tables, settings)}
                         </div>
                     </div>
                 </div>
             );
         }
 
-        function CollapsibleBlock({ title, content, navigateTo, contentImages, docColors, gallery, tables }) {
-            const [isOpen, setIsOpen] = useState(false);
-            return (
-                <div className="border border-gray-300 rounded my-3 overflow-hidden">
-                    <button 
-                        onClick={() => setIsOpen(!isOpen)} 
-                        className="w-full text-left bg-gray-100 hover:bg-gray-200 px-3 py-2 font-bold text-sm flex justify-between items-center outline-none"
-                    >
-                        <span>{isOpen ? '▼' : '▶'} {title}</span>
-                        <span className="text-xs text-gray-500">{isOpen ? "[접기]" : "[펼치기]"}</span>
-                    </button>
-                    {isOpen && (
-                        <div className="p-3 bg-white border-t border-gray-200">
-                            {renderLines(content.split('\n'), navigateTo, [], contentImages, docColors, gallery, tables)}
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
-        function renderLines(lines, navigateTo, footnotes, contentImages, docColors, gallery, tables) {
+        function renderLines(lines, navigateTo, footnotes, contentImages, docColors, gallery, tables, settings) {
             const elements = [];
-            let isFolding = false;
-            let foldTitle = "";
-            let foldLines = [];
-            
             let isQuote = false;
             let quoteLines = [];
+
+            let inTable = false;
+            let tableRows = [];
 
             for (let i = 0; i < lines.length; i++) {
                 const rawLine = lines[i];
                 const line = rawLine.trim();
 
-                const foldStartMatch = line.match(/^\[접기:(.+?)\]$/);
-                if (foldStartMatch) {
-                    isFolding = true;
-                    foldTitle = foldStartMatch[1];
-                    foldLines = [];
+                if (line.startsWith('||') && line.endsWith('||')) {
+                    inTable = true;
+                    tableRows.push(line);
                     continue;
+                } else if (inTable) {
+                    elements.push(<WikiTable key={`table-${i}`} rows={tableRows} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} />);
+                    inTable = false;
+                    tableRows = [];
                 }
 
-                if (line === '[\/접기]') {
-                    isFolding = false;
-                    elements.push(
-                        <CollapsibleBlock key={`fold-${i}`} title={foldTitle} content={foldLines.join('\n')} navigateTo={navigateTo} contentImages={contentImages} docColors={docColors} gallery={gallery} tables={tables} />
-                    );
-                    continue;
-                }
-
-                if (isFolding) {
-                    foldLines.push(rawLine);
-                    continue;
-                }
-                
                 const guiTableMatch = line.match(/^\[표:(\d+)\]$/);
                 if (guiTableMatch) {
                     const tIdx = parseInt(guiTableMatch[1], 10);
@@ -1130,11 +1103,14 @@
 
                 if (line === '') { elements.push(<br key={`br-${i}`} />); continue; }
 
+                // 🌟 전체 설정에서 지정한 경고창 문구 적용
                 if (line === '[스포일러경고]') {
+                    const warnTitle = settings?.spoilerWarningTitle || "⚠️ 주의사항";
+                    const warnText = settings?.spoilerWarningText || "이 문서 하단에는 치명적인 스포일러가 포함되어 있습니다.";
                     elements.push(
                         <div key={`warn-${i}`} className="bg-red-50 border-l-4 border-red-500 p-3 sm:p-4 my-4 rounded-r">
-                            <p className="text-red-700 font-bold flex items-center gap-2"><span className="text-lg sm:text-xl">⚠️</span> 주의사항</p>
-                            <p className="text-red-600 text-xs sm:text-sm mt-1">이 문서 하단에는 치명적인 스포일러가 포함되어 있습니다.</p>
+                            <p className="text-red-700 font-bold flex items-center gap-2 text-lg sm:text-xl">{warnTitle}</p>
+                            <p className="text-red-600 text-xs sm:text-sm mt-1 whitespace-pre-wrap">{warnText}</p>
                         </div>
                     );
                     continue;
@@ -1157,7 +1133,7 @@
                 );
             }
 
-            if (isFolding) elements.push(<CollapsibleBlock key={`fold-end`} title={foldTitle} content={foldLines.join('\n')} navigateTo={navigateTo} contentImages={contentImages} docColors={docColors} gallery={gallery} tables={tables} />);
+            if (inTable) elements.push(<WikiTable key={`table-end`} rows={tableRows} navigateTo={navigateTo} footnotes={footnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} />);
             if (isQuote) {
                 const combinedQuote = quoteLines.join('__BR__');
                 elements.push(
@@ -1170,25 +1146,21 @@
             return elements;
         }
 
-        function WikiRenderer({ content, navigateTo, globalFootnotes = [], contentImages = [], docColors, gallery, tables }) {
+        function WikiRenderer({ docId, content, navigateTo, globalFootnotes = [], contentImages = [], docColors, gallery, tables, settings }) {
             const sections = [];
             let currentH2 = { heading: null, numStr: "", id: "", lines: [], subSections: [] };
             let currentH3 = null;
             
             const rawLines = (content || "").split('\n');
-            let isFolding = false;
             let mainCount = 0;
             let subCount = 0;
             let globalIndex = 0;
             
             for (let i = 0; i < rawLines.length; i++) {
                 const line = rawLines[i].trim();
-                const foldStartMatch = line.match(/^\[접기:(.+?)\]$/);
                 
-                if (foldStartMatch) isFolding = true;
-                if (line === '[\/접기]') isFolding = false;
-                
-                const headingMatch = !isFolding ? line.match(/^(==+)\s+(.+?)\s+\1$/) : null;
+                // 🌟 단락 이름 뒤에 [접기] 가 있는지 판별
+                const headingMatch = line.match(/^(==+)\s+(.+?)\s+\1(\s+\[접기\])?$/);
                 
                 if (headingMatch && headingMatch[1].length === 2) {
                     if (currentH2.heading || currentH2.lines.length > 0 || currentH2.subSections.length > 0) {
@@ -1201,7 +1173,8 @@
                         numStr: `${mainCount}.`, 
                         id: `heading-${globalIndex++}`, 
                         lines: [], 
-                        subSections: [] 
+                        subSections: [],
+                        isDefaultFolded: !!headingMatch[3] // [접기] 태그 여부
                     };
                     currentH3 = null;
                 } else if (headingMatch && headingMatch[1].length === 3) {
@@ -1210,7 +1183,8 @@
                         heading: headingMatch[2],
                         numStr: `${mainCount}.${subCount}.`,
                         id: `heading-${globalIndex++}`,
-                        lines: []
+                        lines: [],
+                        isDefaultFolded: !!headingMatch[3]
                     };
                     currentH2.subSections.push(currentH3);
                 } else {
@@ -1223,7 +1197,7 @@
             return (
                 <div>
                     {sections.map((sec, idx) => (
-                        <SectionBlock key={idx} section={sec} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} tables={tables} />
+                        <SectionBlock key={`${docId}-${idx}`} section={sec} navigateTo={navigateTo} footnotes={globalFootnotes} contentImages={contentImages} docColors={docColors} gallery={gallery} tables={tables} settings={settings} />
                     ))}
                     
                     {globalFootnotes.length > 0 ? (
@@ -1538,20 +1512,20 @@
                         </div>
                     </div>
 
-                    {/* 🌟 수정됨: 도움말에 유튜브 상세 안내 추가 */}
                     {showHelp && (
                         <div className="bg-teal-50 border border-teal-200 p-4 rounded text-xs sm:text-sm text-teal-900 mb-2 overflow-x-auto">
                             <h4 className="font-bold mb-2 flex items-center gap-1">💡 위키 문법 도움말</h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                                 <ul className="list-disc pl-5 space-y-2">
                                     <li><strong>문서 링크:</strong> <code>[[문서ID|표시이름]]</code></li>
-                                    <li><strong>상/하위 단락:</strong> <code>== 이름 ==</code>, <code>=== 이름 ===</code></li>
+                                    <li><strong>단락 나누기:</strong> <code>== 이름 ==</code>, <code>=== 이름 ===</code></li>
+                                    <li><strong>단락 접기:</strong> <code>== 이름 == [접기]</code> (처음부터 접힌 상태로 시작)</li>
                                     <li><strong>서식:</strong> <code>'''굵게'''</code> / <code>''기울임''</code> / <code>~~취소선~~</code></li>
                                 </ul>
                                 <ul className="list-disc pl-5 space-y-2">
                                     <li><strong>인용구:</strong> <code>&gt; 내용 적고 마지막 줄에 &lt;</code></li>
                                     <li><strong>플로팅 주석:</strong> <code>[* 주석 내용]</code></li>
-                                    <li><strong>내용 접기:</strong> <code>[접기:제목]</code> 내용 <code>[/접기]</code></li>
+                                    <li><strong>글자 스포일러:</strong> <code>{"{{스포일러:내용}}"}</code></li>
                                 </ul>
                                 <ul className="list-disc pl-5 space-y-2">
                                     <li>
