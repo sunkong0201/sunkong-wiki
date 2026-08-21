@@ -121,7 +121,6 @@
             return choMap[initial] || initial;
         };
 
-        // 🌟 병합된 셀 숨김 판별기
         const getHiddenCells = (rows) => {
             const hidden = new Set();
             rows.forEach((row, rIdx) => {
@@ -253,7 +252,6 @@
                             profileImgs = [{ url: currentDoc.image, caption: "" }];
                         }
                         
-                        // 🌟 구버전 단순 텍스트 표를 객체형 표로 자동 업그레이드
                         const upgradedTables = (currentDoc.tables || []).map(t => {
                             const newRows = t.rows.map((row, rIdx) => {
                                 return row.map(cell => {
@@ -759,7 +757,6 @@
             return url;
         };
 
-        // 🌟 개선된 표(Table) 렌더링 컴포넌트
         function WikiTable({ tableObj, navigateTo, footnotes, contentImages, docColors, gallery }) {
             const color = tableObj.tableColor || docColors.profileColor;
             const hiddenCells = getHiddenCells(tableObj.rows);
@@ -1063,6 +1060,9 @@
             let isQuote = false;
             let quoteLines = [];
 
+            let inTable = false;
+            let tableRows = [];
+
             for (let i = 0; i < lines.length; i++) {
                 const rawLine = lines[i];
                 const line = rawLine.trim();
@@ -1088,7 +1088,6 @@
                     continue;
                 }
                 
-                // 🌟 신규 표 렌더러 처리
                 const guiTableMatch = line.match(/^\[표:(\d+)\]$/);
                 if (guiTableMatch) {
                     const tIdx = parseInt(guiTableMatch[1], 10);
@@ -1411,7 +1410,6 @@
 
         function EditorView({ editData, setEditData, onSave, onCancel, onDelete, openGallery, gallery }) {
             const [showHelp, setShowHelp] = useState(false);
-            // 🌟 활성화된 표 셀 상태 관리 (tIdx, rIdx, cIdx)
             const [activeCell, setActiveCell] = useState(null); 
 
             const handleChange = (field, value) => setEditData(prev => ({ ...prev, [field]: value }));
@@ -1464,7 +1462,6 @@
                 handleChange('attributes', newAttrs);
             };
 
-            // 🌟 고급 표 편집 기능 (셀 추가/삭제 및 속성 변경)
             const addTable = () => handleChange('tables', [...(editData.tables || []), { 
                 tableColor: editData.profileColor || '#0d9488',
                 rows: [
@@ -1514,20 +1511,6 @@
                 handleChange('tables', newTables);
             };
 
-            const handleContentImageUpload = (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                        const currentImages = editData.contentImages || [];
-                        const newImages = [...currentImages, reader.result];
-                        handleChange('contentImages', newImages);
-                        handleChange('content', (editData.content || "") + `\n[본문사진:${newImages.length - 1}]\n`);
-                    };
-                    reader.readAsDataURL(file);
-                }
-            };
-
             return (
                 <div className="flex flex-col gap-4 relative">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-2">
@@ -1546,19 +1529,25 @@
 
                     {showHelp && (
                         <div className="bg-teal-50 border border-teal-200 p-4 rounded text-xs sm:text-sm text-teal-900 mb-2 overflow-x-auto">
-                            <h4 className="font-bold mb-2">문법 도움말</h4>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <h4 className="font-bold mb-2">💡 위키 문법 도움말</h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                                 <ul className="list-disc pl-5 space-y-1">
-                                    <li><strong>상위 단락:</strong> <code>== 이름 ==</code> (1., 2. 자동부여)</li>
-                                    <li><strong>하위 단락:</strong> <code>=== 이름 ===</code> (1.1, 1.2 자동부여)</li>
-                                    <li><strong>문서 링크:</strong> <code>[[문서ID|이름]]</code></li>
-                                    <li><strong>주석 (플로팅):</strong> <code>[* 주석내용]</code></li>
+                                    <li><strong>문서 링크:</strong> <code>[[문서ID|표시할이름]]</code></li>
+                                    <li><strong>상위 단락:</strong> <code>== 단락 이름 ==</code></li>
+                                    <li><strong>하위 단락:</strong> <code>=== 단락 이름 ===</code></li>
+                                    <li><strong>서식:</strong> <code>'''굵게'''</code> / <code>''기울임''</code> / <code>~~취소선~~</code></li>
                                 </ul>
                                 <ul className="list-disc pl-5 space-y-1">
-                                    <li><strong>표 (Table):</strong> 표 에디터에서 <code>[표:0] 넣기</code> 버튼 사용</li>
-                                    <li><strong>기본 스포일러:</strong> <code>{"{{스포일러:진짜내용}}"}</code></li>
-                                    <li><strong>서식:</strong> <code>'''굵게'''</code> / <code>''기울임''</code> / <code>~~취소~~</code></li>
-                                    <li><strong>여러줄 인용구:</strong> <code>&gt; 내용 적고 엔터 치다가 끝낼 때 &lt;</code></li>
+                                    <li><strong>인용구:</strong> <code>&gt; 내용 적고 마지막 줄에 &lt;</code></li>
+                                    <li><strong>플로팅 주석:</strong> <code>[* 주석 내용]</code></li>
+                                    <li><strong>내용 접기:</strong> <code>[접기:제목]</code> 내용 <code>[/접기]</code></li>
+                                    <li><strong>글자 스포일러:</strong> <code>{"{{스포일러:내용}}"}</code></li>
+                                </ul>
+                                <ul className="list-disc pl-5 space-y-1">
+                                    <li><strong>유튜브:</strong> <code>[유튜브:영상ID]</code> (v= 뒤의 주소)</li>
+                                    <li><strong>경고 박스:</strong> <code>[스포일러경고]</code> (문서 하단 경고용)</li>
+                                    <li><strong>맞춤 숨김:</strong> <code>{"{{숨김:보여줄글씨|진짜내용}}"}</code></li>
+                                    <li><strong>표/사진:</strong> 에디터의 [표 넣기], 보관함 활용</li>
                                 </ul>
                             </div>
                         </div>
@@ -1587,7 +1576,6 @@
                                 <input type="text" placeholder="예: 자캐, 평행우주, 뱀파이어" value={editData.categories || ""} onChange={(e) => handleChange('categories', e.target.value)} className="w-full p-2 border rounded focus:ring-2 ring-teal-400 outline-none text-sm" />
                             </div>
 
-                            {/* 🌟 더욱 강력해진 표(Table) GUI 에디터 */}
                             <div className="border border-gray-200 p-4 rounded bg-gray-50 mb-2">
                                 <div className="flex justify-between items-center mb-2">
                                     <h3 className="font-bold text-gray-800 text-sm sm:text-base">표(Table) 에디터</h3>
@@ -1622,7 +1610,6 @@
                                                 <button onClick={()=>removeCol(tIdx)} className="border border-gray-300 bg-gray-50 px-2 py-1.5 rounded hover:bg-gray-100 font-medium">- 열 삭제</button>
                                             </div>
 
-                                            {/* 🌟 선택된 셀(칸) 전용 설정 툴바 */}
                                             {activeCell && activeCell.t === tIdx && (() => {
                                                 const cell = table.rows[activeCell.r]?.[activeCell.c];
                                                 if (!cell) return null;
@@ -1664,7 +1651,7 @@
                                                         {table.rows.map((row, rIdx) => (
                                                             <tr key={rIdx}>
                                                                 {row.map((cell, cIdx) => {
-                                                                    if (hiddenCells.has(`${rIdx},${cIdx}`)) return null; // 병합된 칸 숨김 처리
+                                                                    if (hiddenCells.has(`${rIdx},${cIdx}`)) return null;
                                                                     const isActive = activeCell?.t === tIdx && activeCell?.r === rIdx && activeCell?.c === cIdx;
                                                                     
                                                                     return (
